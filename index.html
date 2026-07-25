@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TV</title>
+<title>TV Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -11,11 +11,13 @@
   :root {
     --bg-deep: #14110F;
     --bg-glow: #2A1F16;
+    --bg-modal: #1E1916;
     --accent-warm: #E8A854;
     --accent-highlight: #F472B6;
+    --danger-color: #ef4444;
     --text-soft: #F5EDE3;
     --text-muted: #A89A8A;
-    --tile-radius: 22px;
+    --tile-radius: 24px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,48 +53,49 @@
 
   .settings-btn {
     position: absolute;
-    top: 32px;
-    left: 44px;
+    top: 36px;
+    left: 48px;
     z-index: 2;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
     color: var(--text-soft);
-    font-size: 20px;
-    width: 48px;
-    height: 48px;
+    font-size: 24px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   }
 
   .settings-btn:hover, .settings-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.15);
-    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.15);
     outline: none;
     border-color: var(--accent-highlight);
+    box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
   }
 
   .topbar {
     position: absolute;
-    top: 32px;
-    right: 44px;
+    top: 36px;
+    right: 48px;
     z-index: 2;
     text-align: right;
   }
 
   .clock {
     font-family: 'Sora', sans-serif;
-    font-size: 26px;
+    font-size: 32px;
     font-weight: 700;
     color: var(--text-soft);
     letter-spacing: 0.5px;
   }
 
   .date {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--text-muted);
     margin-top: 2px;
     text-transform: capitalize;
@@ -108,7 +111,7 @@
   .greeting {
     font-family: 'Fredoka', sans-serif;
     font-weight: 500;
-    font-size: 40px;
+    font-size: 44px;
     color: var(--accent-warm);
   }
 
@@ -118,7 +121,7 @@
 
   .subtext {
     font-family: 'Fredoka', sans-serif;
-    font-size: 16px;
+    font-size: 18px;
     color: var(--text-muted);
     margin-top: 8px;
   }
@@ -129,8 +132,9 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 24px;
-    max-width: 1220px;
+    gap: 28px;
+    max-width: 1280px;
+    padding: 10px;
   }
 
   @keyframes popIn {
@@ -139,8 +143,8 @@
   }
 
   .tile {
-    width: 172px;
-    height: 172px;
+    width: 180px;
+    height: 180px;
     border-radius: var(--tile-radius);
     display: flex;
     flex-direction: column;
@@ -150,36 +154,42 @@
     color: white;
     position: relative;
     overflow: hidden;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s ease;
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     cursor: pointer;
-    border: none;
+    border: 3px solid transparent;
     opacity: 0;
-    animation: popIn 0.5s ease forwards;
+    animation: popIn 0.4s ease forwards;
   }
 
   .tile::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(160deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 45%);
+    background: linear-gradient(160deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 45%);
     pointer-events: none;
   }
 
   .tile:hover, .tile:focus-visible {
-    transform: translateY(-8px) scale(1.045);
-    box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+    transform: translateY(-8px) scale(1.08);
+    box-shadow: 0 20px 45px rgba(0,0,0,0.6);
     outline: none;
+    border-color: var(--accent-highlight);
+    z-index: 10;
   }
 
-  .tile:focus-visible {
-    box-shadow: 0 0 0 4px var(--accent-highlight), 0 18px 40px rgba(0,0,0,0.5);
+  .tile-icon-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
   }
 
   .tile-icon {
     font-family: 'Sora', sans-serif;
     font-weight: 800;
-    font-size: 32px;
+    font-size: 36px;
     line-height: 1;
     margin-bottom: 12px;
   }
@@ -190,45 +200,47 @@
     font-size: 16px;
     letter-spacing: 0.2px;
     text-align: center;
-    padding: 0 8px;
+    padding: 0 10px;
+    word-break: break-word;
   }
 
   .delete-btn {
     position: absolute;
     top: 10px;
     right: 10px;
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.4);
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 14px;
     cursor: pointer;
     z-index: 5;
     transition: all 0.2s ease;
   }
 
-  .delete-btn:hover, .delete-btn:focus {
-    background: #ef4444;
+  .delete-btn:hover, .delete-btn:focus-visible {
+    background: var(--danger-color);
     color: #ffffff;
-    border-color: #ef4444;
-    transform: scale(1.15);
+    border-color: var(--danger-color);
+    transform: scale(1.2);
     outline: none;
   }
 
   .tile-add {
     background: rgba(255, 255, 255, 0.05);
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border: 2px dashed rgba(255, 255, 255, 0.25);
     color: var(--text-muted);
   }
   
   .tile-add:hover, .tile-add:focus-visible {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     color: var(--text-soft);
+    border-style: solid;
   }
 
   .hint {
@@ -236,7 +248,7 @@
     z-index: 2;
     margin-top: 40px;
     font-family: 'Fredoka', sans-serif;
-    font-size: 15px;
+    font-size: 16px;
     color: var(--text-muted);
     text-align: center;
   }
@@ -257,6 +269,7 @@
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
     display: none;
     justify-content: center;
     align-items: center;
@@ -264,42 +277,45 @@
   }
 
   .modal {
-    background: #1E1916;
-    padding: 30px;
+    background: var(--bg-modal);
+    padding: 36px;
     border-radius: var(--tile-radius);
-    width: 400px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    width: 440px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     color: var(--text-soft);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
   }
 
   .modal h2 {
     font-family: 'Fredoka', sans-serif;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     color: var(--accent-highlight);
     text-align: center;
+    font-size: 24px;
   }
 
   .modal label {
     display: block;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-muted);
   }
 
   .modal input {
     width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
-    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 18px;
+    border-radius: 12px;
     border: 1px solid #3A2F28;
     background: #14110F;
     color: white;
     font-family: 'Sora', sans-serif;
+    font-size: 15px;
   }
 
-  .modal input:focus {
-    outline: 2px solid var(--accent-highlight);
+  .modal input:focus-visible {
+    outline: 3px solid var(--accent-highlight);
+    border-color: transparent;
   }
 
   .modal-buttons {
@@ -311,12 +327,19 @@
 
   .modal-btn {
     flex: 1;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 14px;
+    border-radius: 12px;
     border: none;
     cursor: pointer;
     font-family: 'Sora', sans-serif;
     font-weight: 600;
+    font-size: 15px;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+
+  .modal-btn:focus-visible {
+    outline: 3px solid white;
+    transform: scale(1.03);
   }
 
   .btn-cancel { background: #3A2F28; color: white; }
@@ -324,6 +347,8 @@
 
   @media (max-width: 900px) {
     .tile { width: 140px; height: 140px; }
+    .tile-icon-img { width: 36px; height: 36px; }
+    .tile-icon { font-size: 28px; }
   }
 </style>
 </head>
@@ -331,7 +356,7 @@
 
   <div class="glow"></div>
 
-  <button class="settings-btn" onclick="openSettingsModal()" title="Configurações" tabindex="1">⚙️</button>
+  <button class="settings-btn" onclick="openSettingsModal()" title="Configurações">⚙️</button>
 
   <div class="topbar">
     <div class="clock" id="clock">--:--</div>
@@ -353,11 +378,13 @@
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <h2>Adicionar Novo Link</h2>
-      <input type="text" id="appName" placeholder="Nome (Ex: Receitas)" tabindex="100">
-      <input type="text" id="appUrl" placeholder="URL (Ex: https://...)" tabindex="101">
+      <label for="appName">Nome do Aplicativo:</label>
+      <input type="text" id="appName" placeholder="Ex: Receitas">
+      <label for="appUrl">Endereço (URL):</label>
+      <input type="text" id="appUrl" placeholder="Ex: youtube.com">
       <div class="modal-buttons">
-        <button class="modal-btn btn-cancel" onclick="closeModal()" tabindex="102">Cancelar</button>
-        <button class="modal-btn btn-save" onclick="saveApp()" tabindex="103">Salvar</button>
+        <button class="modal-btn btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="modal-btn btn-save" onclick="saveApp()">Salvar</button>
       </div>
     </div>
   </div>
@@ -367,10 +394,10 @@
     <div class="modal">
       <h2>⚙️ Configurações</h2>
       <label for="userNameInput">Nome de usuário:</label>
-      <input type="text" id="userNameInput" placeholder="Ex: Mãe" tabindex="200">
+      <input type="text" id="userNameInput" placeholder="Ex: Mãe">
       <div class="modal-buttons">
-        <button class="modal-btn btn-cancel" onclick="closeSettingsModal()" tabindex="201">Cancelar</button>
-        <button class="modal-btn btn-save" onclick="saveSettings()" tabindex="202">Salvar</button>
+        <button class="modal-btn btn-cancel" onclick="closeSettingsModal()">Cancelar</button>
+        <button class="modal-btn btn-save" onclick="saveSettings()">Salvar</button>
       </div>
     </div>
   </div>
@@ -379,7 +406,7 @@
   const DEFAULT_APPS = [
     { name: "Netflix",     url: "https://www.netflix.com",        initial: "N", grad: ["#C11119", "#7A0A10"] },
     { name: "YouTube",     url: "https://www.youtube.com",        initial: "▶", grad: ["#E8342A", "#8E1A14"] },
-    { name: "Globoplay",   url: "https://globoplay.globo.com",    initial: "G", grad: ["#E4265A", "#7A0F30"] },
+    { name: "Globoplay",   url: "https://globoplay.globo.com",   initial: "G", grad: ["#E4265A", "#7A0F30"] },
     { name: "SBT",         url: "https://www.sbt.com.br/ao-vivo", initial: "S", grad: ["#1450A3", "#0A2C5C"] },
     { name: "Internet",    url: "https://www.google.com",         initial: "🌐", grad: ["#E8A854", "#8A5A1E"] },
   ];
@@ -395,6 +422,24 @@
     ["#be185d", "#831843"]
   ];
 
+  function getFaviconUrl(url) {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+    } catch {
+      return '';
+    }
+  }
+
+  function createTileContent(app) {
+    const faviconUrl = getFaviconUrl(app.url);
+    return `
+      ${faviconUrl ? `<img src="${faviconUrl}" alt="" class="tile-icon-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` : ''}
+      <div class="tile-icon" style="${faviconUrl ? 'display:none;' : ''}">${app.initial}</div>
+      <div class="tile-label">${app.name}</div>
+    `;
+  }
+
   function renderApps() {
     tilesEl.innerHTML = ''; 
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
@@ -404,10 +449,9 @@
       const a = document.createElement('a');
       a.className = 'tile';
       a.href = app.url;
-      a.tabIndex = i + 2;
-      a.style.animationDelay = `${i * 0.06}s`;
+      a.style.animationDelay = `${i * 0.05}s`;
       a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
-      a.innerHTML = `<div class="tile-icon">${app.initial}</div><div class="tile-label">${app.name}</div>`;
+      a.innerHTML = createTileContent(app);
       tilesEl.appendChild(a);
     });
 
@@ -418,13 +462,11 @@
       const a = document.createElement('a');
       a.className = 'tile';
       a.href = app.url;
-      a.tabIndex = index + 2;
-      a.style.animationDelay = `${index * 0.06}s`;
+      a.style.animationDelay = `${index * 0.05}s`;
       a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
       a.innerHTML = `
-        <button class="delete-btn" onclick="deleteApp(${i}, event)" title="Remover link">✕</button>
-        <div class="tile-icon">${app.initial}</div>
-        <div class="tile-label">${app.name}</div>
+        <button class="delete-btn" onclick="deleteApp(${i}, event)" title="Remover link" tabindex="-1">✕</button>
+        ${createTileContent(app)}
       `;
       tilesEl.appendChild(a);
     });
@@ -433,8 +475,7 @@
     const totalApps = totalDefault + customApps.length;
     const addBtn = document.createElement('button');
     addBtn.className = 'tile tile-add';
-    addBtn.tabIndex = totalApps + 2;
-    addBtn.style.animationDelay = `${totalApps * 0.06}s`;
+    addBtn.style.animationDelay = `${totalApps * 0.05}s`;
     addBtn.onclick = openModal;
     addBtn.innerHTML = `<div class="tile-icon">➕</div><div class="tile-label">Adicionar</div>`;
     tilesEl.appendChild(addBtn);
@@ -443,12 +484,14 @@
   function openModal() {
     modal.style.display = 'flex';
     document.getElementById('appName').value = '';
-    document.getElementById('appUrl').value = 'https://';
+    document.getElementById('appUrl').value = '';
     document.getElementById('appName').focus();
   }
 
   function closeModal() {
     modal.style.display = 'none';
+    const firstTile = tilesEl.querySelector('.tile');
+    if (firstTile) firstTile.focus();
   }
 
   function openSettingsModal() {
@@ -460,6 +503,7 @@
 
   function closeSettingsModal() {
     settingsModal.style.display = 'none';
+    document.querySelector('.settings-btn').focus();
   }
 
   function saveSettings() {
@@ -480,6 +524,11 @@
     if (!name || !url) {
       alert("Por favor, preencha o nome e a URL.");
       return;
+    }
+
+    // Validação e formatação de URL
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
     }
 
     const initial = name.charAt(0).toUpperCase();
@@ -506,16 +555,62 @@
     }
   }
 
+  // --- Navegação Espacial Avançada via Controle Remoto ---
+  window.addEventListener('keydown', function(event) {
+    const active = document.activeElement;
+    const isModalOpen = modal.style.display === 'flex' || settingsModal.style.display === 'flex';
+
+    if (event.key === "Escape" || event.key === "Back" || event.keyCode === 10009 || event.keyCode === 461) {
+      if (modal.style.display === 'flex') closeModal();
+      if (settingsModal.style.display === 'flex') closeSettingsModal();
+      return;
+    }
+
+    if (isModalOpen) return; // Permite digitação normal dentro dos modais
+
+    const elements = Array.from(document.querySelectorAll('a.tile, button.tile, .settings-btn'));
+    if (!elements.length) return;
+
+    if (!elements.includes(active)) {
+      elements[0].focus();
+      return;
+    }
+
+    const activeRect = active.getBoundingClientRect();
+    let bestCandidate = null;
+    let minDistance = Infinity;
+
+    elements.forEach(el => {
+      if (el === active) return;
+      const rect = el.getBoundingClientRect();
+
+      let isCandidate = false;
+      if (event.key === 'ArrowRight') isCandidate = rect.left >= activeRect.right - 10;
+      if (event.key === 'ArrowLeft')  isCandidate = rect.right <= activeRect.left + 10;
+      if (event.key === 'ArrowDown')  isCandidate = rect.top >= activeRect.bottom - 10;
+      if (event.key === 'ArrowUp')    isCandidate = rect.bottom <= activeRect.top + 10;
+
+      if (isCandidate) {
+        const dx = (rect.left + rect.width / 2) - (activeRect.left + activeRect.width / 2);
+        const dy = (rect.top + rect.height / 2) - (activeRect.top + activeRect.height / 2);
+        const distance = dx * dx + dy * dy;
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          bestCandidate = el;
+        }
+      }
+    });
+
+    if (bestCandidate) {
+      event.preventDefault();
+      bestCandidate.focus();
+    }
+  });
+
   window.onclick = function(event) { 
     if (event.target === modal) closeModal(); 
     if (event.target === settingsModal) closeSettingsModal();
-  }
-  
-  window.onkeydown = function(event) { 
-    if (event.key === "Escape") {
-      if (modal.style.display === 'flex') closeModal();
-      if (settingsModal.style.display === 'flex') closeSettingsModal();
-    }
   }
 
   function pad(n) { return n.toString().padStart(2, '0'); }
