@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TV Box - By Lem</title>
+<title>TV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -47,6 +47,32 @@
     opacity: 0.9;
     pointer-events: none;
     z-index: 0;
+  }
+
+  .settings-btn {
+    position: absolute;
+    top: 32px;
+    left: 44px;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-soft);
+    font-size: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .settings-btn:hover, .settings-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+    outline: none;
+    border-color: var(--accent-highlight);
   }
 
   .topbar {
@@ -215,7 +241,6 @@
     text-align: center;
   }
 
-  /* Frase no canto inferior esquerdo */
   .magic-text {
     position: absolute;
     bottom: 24px;
@@ -253,6 +278,13 @@
     margin-bottom: 20px;
     color: var(--accent-highlight);
     text-align: center;
+  }
+
+  .modal label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
   }
 
   .modal input {
@@ -299,6 +331,8 @@
 
   <div class="glow"></div>
 
+  <button class="settings-btn" onclick="openSettingsModal()" title="Configurações" tabindex="1">⚙️</button>
+
   <div class="topbar">
     <div class="clock" id="clock">--:--</div>
     <div class="date" id="date">--</div>
@@ -315,6 +349,7 @@
 
   <div class="magic-text">Essa é a magia da programação</div>
 
+  <!-- Modal Adicionar Link -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <h2>Adicionar Novo Link</h2>
@@ -323,6 +358,19 @@
       <div class="modal-buttons">
         <button class="modal-btn btn-cancel" onclick="closeModal()" tabindex="102">Cancelar</button>
         <button class="modal-btn btn-save" onclick="saveApp()" tabindex="103">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configurações -->
+  <div class="modal-overlay" id="settingsModalOverlay">
+    <div class="modal">
+      <h2>⚙️ Configurações</h2>
+      <label for="userNameInput">Nome de usuário:</label>
+      <input type="text" id="userNameInput" placeholder="Ex: Mãe" tabindex="200">
+      <div class="modal-buttons">
+        <button class="modal-btn btn-cancel" onclick="closeSettingsModal()" tabindex="201">Cancelar</button>
+        <button class="modal-btn btn-save" onclick="saveSettings()" tabindex="202">Salvar</button>
       </div>
     </div>
   </div>
@@ -338,6 +386,7 @@
 
   const tilesEl = document.getElementById('tiles');
   const modal = document.getElementById('modalOverlay');
+  const settingsModal = document.getElementById('settingsModalOverlay');
 
   const gradients = [
     ["#6b21a8", "#3b0764"], ["#047857", "#064e3b"], 
@@ -355,21 +404,21 @@
       const a = document.createElement('a');
       a.className = 'tile';
       a.href = app.url;
-      a.tabIndex = i + 1;
+      a.tabIndex = i + 2;
       a.style.animationDelay = `${i * 0.06}s`;
       a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
       a.innerHTML = `<div class="tile-icon">${app.initial}</div><div class="tile-label">${app.name}</div>`;
       tilesEl.appendChild(a);
     });
 
-    // Apps Personalizados (com botão de deletar)
+    // Apps Personalizados
     const totalDefault = DEFAULT_APPS.length;
     customApps.forEach((app, i) => {
       const index = totalDefault + i;
       const a = document.createElement('a');
       a.className = 'tile';
       a.href = app.url;
-      a.tabIndex = index + 1;
+      a.tabIndex = index + 2;
       a.style.animationDelay = `${index * 0.06}s`;
       a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
       a.innerHTML = `
@@ -384,7 +433,7 @@
     const totalApps = totalDefault + customApps.length;
     const addBtn = document.createElement('button');
     addBtn.className = 'tile tile-add';
-    addBtn.tabIndex = totalApps + 1;
+    addBtn.tabIndex = totalApps + 2;
     addBtn.style.animationDelay = `${totalApps * 0.06}s`;
     addBtn.onclick = openModal;
     addBtn.innerHTML = `<div class="tile-icon">➕</div><div class="tile-label">Adicionar</div>`;
@@ -400,6 +449,28 @@
 
   function closeModal() {
     modal.style.display = 'none';
+  }
+
+  function openSettingsModal() {
+    const currentName = localStorage.getItem('tvUserName') || 'Mãe!';
+    document.getElementById('userNameInput').value = currentName;
+    settingsModal.style.display = 'flex';
+    document.getElementById('userNameInput').focus();
+  }
+
+  function closeSettingsModal() {
+    settingsModal.style.display = 'none';
+  }
+
+  function saveSettings() {
+    const newName = document.getElementById('userNameInput').value.trim();
+    if (newName) {
+      localStorage.setItem('tvUserName', newName);
+    } else {
+      localStorage.removeItem('tvUserName');
+    }
+    closeSettingsModal();
+    updateClock();
   }
 
   function saveApp() {
@@ -435,8 +506,17 @@
     }
   }
 
-  window.onclick = function(event) { if (event.target === modal) closeModal(); }
-  window.onkeydown = function(event) { if (event.key === "Escape" && modal.style.display === 'flex') closeModal(); }
+  window.onclick = function(event) { 
+    if (event.target === modal) closeModal(); 
+    if (event.target === settingsModal) closeSettingsModal();
+  }
+  
+  window.onkeydown = function(event) { 
+    if (event.key === "Escape") {
+      if (modal.style.display === 'flex') closeModal();
+      if (settingsModal.style.display === 'flex') closeSettingsModal();
+    }
+  }
 
   function pad(n) { return n.toString().padStart(2, '0'); }
 
@@ -454,7 +534,8 @@
     if (h >= 5 && h < 12) greet = 'Bom dia, ';
     else if (h >= 12 && h < 18) greet = 'Boa tarde, ';
     
-    document.getElementById('greeting').innerHTML = greet + '<span>Mãe!</span>';
+    const userName = localStorage.getItem('tvUserName') || 'Mãe!';
+    document.getElementById('greeting').innerHTML = greet + '<span>' + userName + '</span>';
   }
 
   updateClock();
