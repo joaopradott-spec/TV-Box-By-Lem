@@ -469,7 +469,7 @@
 
   <div class="tiles" id="tiles"></div>
 
-  <div class="hint">Aperte OK para selecionar ou clique nas setinhas para reorganizar</div>
+  <div class="hint">Aperte Enter / OK para abrir o app ou clique nas setinhas para reorganizar</div>
 
   <div class="magic-text">Essa é a magia da programação</div>
 
@@ -529,7 +529,7 @@
   const screensaver = document.getElementById('screensaver');
 
   let idleTimer = null;
-  const IDLE_TIME_LIMIT = 120000; // 2 minutos
+  const IDLE_TIME_LIMIT = 120000;
 
   const gradients = [
     ["#6b21a8", "#3b0764"], ["#047857", "#064e3b"], 
@@ -556,6 +556,13 @@
     `;
   }
 
+  function launchApp(tileElement, url) {
+    tileElement.classList.add('launching');
+    setTimeout(() => {
+      window.location.href = url;
+    }, 400);
+  }
+
   function renderApps() {
     tilesEl.innerHTML = ''; 
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
@@ -578,9 +585,9 @@
 
       a.onclick = (e) => {
         if (e.target.closest('.tile-actions')) return;
-        a.classList.add('launching');
-        setTimeout(() => { window.location.href = app.url; }, 400);
+        launchApp(a, app.url);
       };
+
       tilesEl.appendChild(a);
     });
 
@@ -606,9 +613,9 @@
 
       a.onclick = (e) => {
         if (e.target.closest('.tile-actions')) return;
-        a.classList.add('launching');
-        setTimeout(() => { window.location.href = app.url; }, 400);
+        launchApp(a, app.url);
       };
+
       tilesEl.appendChild(a);
     });
 
@@ -623,7 +630,6 @@
     tilesEl.appendChild(addBtn);
   }
 
-  // Lógica segura para mover itens entre padrão e personalizados sem travar
   function moveDefaultApp(index, direction, event) {
     event.preventDefault();
     event.stopPropagation();
@@ -631,7 +637,6 @@
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
     
     if (direction === -1 && index > 0) {
-      // Troca com o anterior que pode ser o padrão anterior
       const temp = DEFAULT_APPS[index];
       DEFAULT_APPS[index] = DEFAULT_APPS[index - 1];
       DEFAULT_APPS[index - 1] = temp;
@@ -641,7 +646,6 @@
         DEFAULT_APPS[index] = DEFAULT_APPS[index + 1];
         DEFAULT_APPS[index + 1] = temp;
       } else if (customApps.length > 0) {
-        // Passa o último padrão para o primeiro dos customizados
         const item = DEFAULT_APPS.splice(index, 1)[0];
         customApps.unshift(item);
       }
@@ -657,10 +661,8 @@
 
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
     const absoluteIndex = DEFAULT_APPS.length + customIndex;
-    const targetAbsolute = absoluteIndex + direction;
 
     if (direction === -1 && customIndex === 0) {
-      // Passa o primeiro customizado para o final dos padrões
       const item = customApps.splice(0, 1)[0];
       DEFAULT_APPS.push(item);
     } else {
@@ -824,7 +826,7 @@
     resetIdleTimer();
   }
 
-  // Navegação Espacial via Controle
+  // Navegação Espacial via Controle e Ativação por Enter
   window.addEventListener('keydown', function(event) {
     resetIdleTimer();
     const active = document.activeElement;
@@ -837,6 +839,20 @@
     }
 
     if (isModalOpen) return;
+
+    // Se o usuário apertar Enter em cima de um tile normal de app
+    if ((event.key === "Enter" || event.keyCode === 13) && active && active.classList.contains('tile') && !active.classList.contains('tile-add')) {
+      event.preventDefault();
+      // Descobre a URL associada buscando nos dados renderizados
+      let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
+      const allApps = [...DEFAULT_APPS, ...customApps];
+      const elements = Array.from(document.querySelectorAll('.tile'));
+      const index = elements.indexOf(active);
+      if (index >= 0 && index < allApps.length) {
+        launchApp(active, allApps[index].url);
+      }
+      return;
+    }
 
     const elements = Array.from(document.querySelectorAll('.tile, .settings-btn'));
     if (!elements.length) return;
