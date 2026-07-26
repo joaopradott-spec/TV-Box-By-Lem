@@ -343,21 +343,21 @@
     opacity: 1;
   }
   .ls-icon-img {
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     object-fit: contain;
     margin-bottom: 24px;
     filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
     animation: pulseIcon 1.2s infinite alternate;
   }
   .ls-icon {
-    font-size: 80px;
+    font-size: 96px;
     font-weight: 800;
     margin-bottom: 24px;
     animation: pulseIcon 1.2s infinite alternate;
   }
   .ls-label {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 800;
     margin-bottom: 40px;
     letter-spacing: 0.5px;
@@ -562,7 +562,6 @@
   </div>
 
 <script>
-  // Chave correta e consistente para persistência local
   const STORAGE_KEY = 'tvAppsLayout';
 
   const defaultAppsList = [
@@ -598,37 +597,14 @@
   let idleTimer = null;
   const IDLE_TIME_LIMIT = 120000;
 
-  // Web Audio API para sons refinados
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  
-  function playSound(type) {
-    if (!audioCtx) return;
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+  // Som de clique personalizado linkado direto da web (Freesound link seguro)
+  const clickSound = new Audio('https://cdn.freesound.org/previews/342/342200_6336336-lq.mp3');
+  clickSound.volume = 0.6;
 
-    if (type === 'move') {
-      // Som sutil de foco
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.05);
-      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.05);
-    } else if (type === 'click') {
-      // Som de botão físico pressionado (clique abafado/seco)
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.06);
-      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.06);
+  function playSound(type) {
+    if (type === 'click') {
+      clickSound.currentTime = 0;
+      clickSound.play().catch(() => {});
     }
   }
 
@@ -657,7 +633,6 @@
     `;
   }
 
-  // Tela cheia de carregamento com o ícone, nome e spinner
   function launchApp(app) {
     playSound('click');
     const faviconUrl = getFaviconUrl(app.url);
@@ -690,7 +665,7 @@
       a.style.animationDelay = `${i * 0.05}s`;
       a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
       
-      // Constrói os botões de ação dinamicamente dependendo se é padrão ou personalizado
+      // Renderiza os botões com base no estado persistido (garantindo que personalizados sempre tenham editar/excluir)
       let actionsHtml = `
         <div class="tile-actions">
           <button class="action-btn" onclick="moveApp(${i}, -1, event)" title="Mover para esquerda">◀</button>
@@ -707,7 +682,6 @@
 
       a.innerHTML = actionsHtml + createTileContent(app);
 
-      a.onfocus = () => playSound('move');
       a.onclick = (e) => {
         if (e.target.closest('.tile-actions')) return;
         launchApp(app);
@@ -716,18 +690,15 @@
       tilesEl.appendChild(a);
     });
 
-    // Botão Adicionar sempre ao final
     const addBtn = document.createElement('button');
     addBtn.className = 'tile tile-add';
     addBtn.tabIndex = 0;
     addBtn.style.animationDelay = `${apps.length * 0.05}s`;
-    addBtn.onfocus = () => playSound('move');
     addBtn.onclick = openModal;
     addBtn.innerHTML = `<div class="tile-icon">➕</div><div class="tile-label">Adicionar</div>`;
     tilesEl.appendChild(addBtn);
   }
 
-  // Função unificada de movimentação compatível com todos os itens armazenados
   function moveApp(index, direction, event) {
     event.preventDefault();
     event.stopPropagation();
@@ -861,7 +832,6 @@
     }
   }
 
-  // Previsão do tempo
   async function fetchWeather() {
     try {
       const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current_weather=true');
@@ -885,7 +855,6 @@
     }
   }
 
-  // Descanso de tela
   function resetIdleTimer() {
     if (screensaver.classList.contains('active')) {
       dismissScreensaver();
@@ -901,7 +870,6 @@
     resetIdleTimer();
   }
 
-  // Navegação Espacial via Controle e Ativação por Enter
   window.addEventListener('keydown', function(event) {
     resetIdleTimer();
     const active = document.activeElement;
