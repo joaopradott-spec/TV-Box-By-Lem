@@ -417,7 +417,7 @@
   .btn-cancel { background: #3A2F28; color: white; }
   .btn-save { background: var(--accent-highlight); color: #FFF; }
 
-  /* Screensaver / Modo Descanso */
+  /* Modo Descanso / Screensaver */
   #screensaver {
     position: fixed;
     inset: 0;
@@ -469,7 +469,7 @@
 
   <div class="tiles" id="tiles"></div>
 
-  <div class="hint">Aperte OK para selecionar ou use os botões nas setas para reorganizar</div>
+  <div class="hint">Aperte OK para selecionar ou clique nas setinhas para reorganizar</div>
 
   <div class="magic-text">Essa é a magia da programação</div>
 
@@ -529,7 +529,7 @@
   const screensaver = document.getElementById('screensaver');
 
   let idleTimer = null;
-  const IDLE_TIME_LIMIT = 120000; // 2 minutos sem mexer ativa o descobre-tela
+  const IDLE_TIME_LIMIT = 120000; // 2 minutos
 
   const gradients = [
     ["#6b21a8", "#3b0764"], ["#047857", "#064e3b"], 
@@ -559,12 +559,9 @@
   function renderApps() {
     tilesEl.innerHTML = ''; 
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
-    let allApps = [...DEFAULT_APPS, ...customApps];
 
-    allApps.forEach((app, i) => {
-      const isDefault = i < DEFAULT_APPS.length;
-      const customIdx = i - DEFAULT_APPS.length;
-
+    // Renderiza Apps Padrão
+    DEFAULT_APPS.forEach((app, i) => {
       const a = document.createElement('div');
       a.className = 'tile';
       a.tabIndex = 0;
@@ -573,58 +570,110 @@
       
       a.innerHTML = `
         <div class="tile-actions">
-          <button class="action-btn" onclick="moveApp(${i}, -1, event)" title="Mover para esquerda" tabindex="-1">◀</button>
-          <button class="action-btn" onclick="moveApp(${i}, 1, event)" title="Mover para direita" tabindex="-1">▶</button>
-          ${!isDefault ? `<button class="action-btn delete" onclick="deleteApp(${customIdx}, event)" title="Remover" tabindex="-1">✕</button>` : ''}
-          ${!isDefault ? `<button class="action-btn" onclick="openEditModal(${customIdx}, event)" title="Editar" tabindex="-1">✏️</button>` : ''}
+          <button class="action-btn" onclick="moveDefaultApp(${i}, -1, event)" title="Mover para esquerda">◀</button>
+          <button class="action-btn" onclick="moveDefaultApp(${i}, 1, event)" title="Mover para direita">▶</button>
         </div>
         ${createTileContent(app)}
       `;
 
-      // Ação de clique com animação de zoom de lançamento
       a.onclick = (e) => {
         if (e.target.closest('.tile-actions')) return;
         a.classList.add('launching');
-        setTimeout(() => {
-          window.location.href = app.url;
-        }, 400);
+        setTimeout(() => { window.location.href = app.url; }, 400);
       };
+      tilesEl.appendChild(a);
+    });
 
+    // Renderiza Apps Personalizados
+    const totalDefault = DEFAULT_APPS.length;
+    customApps.forEach((app, i) => {
+      const index = totalDefault + i;
+      const a = document.createElement('div');
+      a.className = 'tile';
+      a.tabIndex = 0;
+      a.style.animationDelay = `${index * 0.05}s`;
+      a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
+      
+      a.innerHTML = `
+        <div class="tile-actions">
+          <button class="action-btn" onclick="moveCustomApp(${i}, -1, event)" title="Mover para esquerda">◀</button>
+          <button class="action-btn" onclick="moveCustomApp(${i}, 1, event)" title="Mover para direita">▶</button>
+          <button class="action-btn delete" onclick="deleteApp(${i}, event)" title="Remover">✕</button>
+          <button class="action-btn" onclick="openEditModal(${i}, event)" title="Editar">✏️</button>
+        </div>
+        ${createTileContent(app)}
+      `;
+
+      a.onclick = (e) => {
+        if (e.target.closest('.tile-actions')) return;
+        a.classList.add('launching');
+        setTimeout(() => { window.location.href = app.url; }, 400);
+      };
       tilesEl.appendChild(a);
     });
 
     // Botão Adicionar
+    const totalApps = totalDefault + customApps.length;
     const addBtn = document.createElement('button');
     addBtn.className = 'tile tile-add';
     addBtn.tabIndex = 0;
-    addBtn.style.animationDelay = `${allApps.length * 0.05}s`;
+    addBtn.style.animationDelay = `${totalApps * 0.05}s`;
     addBtn.onclick = openModal;
     addBtn.innerHTML = `<div class="tile-icon">➕</div><div class="tile-label">Adicionar</div>`;
     tilesEl.appendChild(addBtn);
   }
 
-  function moveApp(index, direction, event) {
+  // Lógica segura para mover itens entre padrão e personalizados sem travar
+  function moveDefaultApp(index, direction, event) {
     event.preventDefault();
     event.stopPropagation();
 
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
-    let allApps = [...DEFAULT_APPS, ...customApps];
+    
+    if (direction === -1 && index > 0) {
+      // Troca com o anterior que pode ser o padrão anterior
+      const temp = DEFAULT_APPS[index];
+      DEFAULT_APPS[index] = DEFAULT_APPS[index - 1];
+      DEFAULT_APPS[index - 1] = temp;
+    } else if (direction === 1) {
+      if (index < DEFAULT_APPS.length - 1) {
+        const temp = DEFAULT_APPS[index];
+        DEFAULT_APPS[index] = DEFAULT_APPS[index + 1];
+        DEFAULT_APPS[index + 1] = temp;
+      } else if (customApps.length > 0) {
+        // Passa o último padrão para o primeiro dos customizados
+        const item = DEFAULT_APPS.splice(index, 1)[0];
+        customApps.unshift(item);
+      }
+    }
 
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= allApps.length) return;
-
-    // Realoca os itens no array combinado
-    const item = allApps.splice(index, 1)[0];
-    allApps.splice(targetIndex, 0, item);
-
-    // Separa novamente os customizados salvando na ordem correta
-    const newCustom = allApps.slice(DEFAULT_APPS.length);
-    localStorage.setItem('tvCustomApps', JSON.stringify(newCustom));
+    localStorage.setItem('tvCustomApps', JSON.stringify(customApps));
     renderApps();
+  }
 
-    // Mantém o foco no elemento movido
-    const updatedTiles = document.querySelectorAll('.tile');
-    if (updatedTiles[targetIndex]) updatedTiles[targetIndex].focus();
+  function moveCustomApp(customIndex, direction, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
+    const absoluteIndex = DEFAULT_APPS.length + customIndex;
+    const targetAbsolute = absoluteIndex + direction;
+
+    if (direction === -1 && customIndex === 0) {
+      // Passa o primeiro customizado para o final dos padrões
+      const item = customApps.splice(0, 1)[0];
+      DEFAULT_APPS.push(item);
+    } else {
+      const targetCustomIdx = customIndex + direction;
+      if (targetCustomIdx >= 0 && targetCustomIdx < customApps.length) {
+        const temp = customApps[customIndex];
+        customApps[customIndex] = customApps[targetCustomIdx];
+        customApps[targetCustomIdx] = temp;
+      }
+    }
+
+    localStorage.setItem('tvCustomApps', JSON.stringify(customApps));
+    renderApps();
   }
 
   function openModal() {
@@ -708,13 +757,11 @@
     let customApps = JSON.parse(localStorage.getItem('tvCustomApps')) || [];
 
     if (editIndexVal !== '') {
-      // Editando app existente
       const idx = parseInt(editIndexVal);
       customApps[idx].name = name;
       customApps[idx].url = url;
       customApps[idx].initial = name.charAt(0).toUpperCase();
     } else {
-      // Criando novo app
       const initial = name.charAt(0).toUpperCase();
       const randomGrad = gradients[Math.floor(Math.random() * gradients.length)];
       customApps.push({ name, url, initial, grad: randomGrad });
@@ -737,10 +784,9 @@
     }
   }
 
-  // --- Previsão do Tempo Real via Open-Meteo (São Paulo como padrão ou geolocalização aproximada) ---
+  // Previsão do tempo
   async function fetchWeather() {
     try {
-      // Coordenadas aproximadas de São Paulo para teste rápido (ou ajuste se preferir)
       const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current_weather=true');
       const data = await res.json();
       if (data && data.current_weather) {
@@ -762,7 +808,7 @@
     }
   }
 
-  // --- Modo Descanso / Screensaver ---
+  // Descanso de tela
   function resetIdleTimer() {
     if (screensaver.classList.contains('active')) {
       dismissScreensaver();
@@ -778,7 +824,7 @@
     resetIdleTimer();
   }
 
-  // --- Navegação Espacial via Controle Remoto ---
+  // Navegação Espacial via Controle
   window.addEventListener('keydown', function(event) {
     resetIdleTimer();
     const active = document.activeElement;
@@ -863,14 +909,13 @@
     document.getElementById('greeting').innerHTML = greet + '<span>' + userName + '</span>';
   }
 
-  // Inicialização
   const savedTheme = localStorage.getItem('tvTheme') || 'theme-warm';
   applyTheme(savedTheme);
 
   updateClock();
   fetchWeather();
   setInterval(updateClock, 15000);
-  setInterval(fetchWeather, 600000); // Atualiza clima a cada 10 min
+  setInterval(fetchWeather, 600000);
   renderApps(); 
   resetIdleTimer();
 </script>
