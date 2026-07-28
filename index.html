@@ -45,6 +45,30 @@
     --accent-warm: #FB923C;
     --accent-highlight: #F43F5E;
   }
+  body.theme-blue {
+    --bg-deep: #0A1420;
+    --bg-glow: #132C48;
+    --accent-warm: #38BDF8;
+    --accent-highlight: #818CF8;
+  }
+  body.theme-red {
+    --bg-deep: #1A0A0A;
+    --bg-glow: #3A1414;
+    --accent-warm: #F87171;
+    --accent-highlight: #FBBF24;
+  }
+  body.theme-pink {
+    --bg-deep: #1A0B14;
+    --bg-glow: #3A1628;
+    --accent-warm: #F472B6;
+    --accent-highlight: #FDE047;
+  }
+  body.theme-gray {
+    --bg-deep: #111214;
+    --bg-glow: #26282C;
+    --accent-warm: #CBD5E1;
+    --accent-highlight: #38BDF8;
+  }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -215,6 +239,32 @@
   .tile[draggable="true"] { cursor: grab; }
   .tile.dragging { opacity: 0.4; cursor: grabbing; }
   .tile.drag-over { outline: 3px dashed var(--accent-highlight); outline-offset: 4px; }
+
+  .tile-lock-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    font-size: 14px;
+    background: rgba(0,0,0,0.55);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+
+  #profileTransition {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9998;
+    transition: opacity 0.25s ease;
+  }
+  #profileTransition.active { opacity: 0.6; }
 
   .tile::after {
     content: '';
@@ -588,6 +638,11 @@
       <label>Cor do tile (usada se o ícone do site não carregar):</label>
       <div class="color-swatches" id="colorSwatches"></div>
       <input type="hidden" id="appColorIndex" value="-1">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="appProtected" style="width:auto; margin-bottom:0;">
+        🔒 Proteger este app com o PIN do perfil
+      </label>
+      <div style="height:8px;"></div>
       <div class="modal-buttons">
         <button class="modal-btn btn-cancel" onclick="closeModal()">Cancelar</button>
         <button class="modal-btn btn-save" onclick="saveApp()">Salvar</button>
@@ -607,11 +662,25 @@
 
       <label for="themeSelect">Tema de Cores (deste perfil):</label>
       <select id="themeSelect">
-        <option value="theme-warm">Café Quente (Padrão)</option>
-        <option value="theme-emerald">Verde Esmeralda</option>
-        <option value="theme-neon">Roxo Neon</option>
-        <option value="theme-sunset">Pôr do Sol</option>
+        <option value="theme-warm">Marrom (Padrão)</option>
+        <option value="theme-emerald">Verde</option>
+        <option value="theme-neon">Roxo</option>
+        <option value="theme-sunset">Laranja</option>
+        <option value="theme-blue">Azul</option>
+        <option value="theme-red">Vermelho</option>
+        <option value="theme-pink">Rosa</option>
+        <option value="theme-gray">Cinza</option>
       </select>
+
+      <label for="profilePinInput">PIN deste perfil (opcional, 4 dígitos — protege as configurações e apps marcados):</label>
+      <input type="password" id="profilePinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="Deixe em branco para não usar PIN">
+
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:18px;">
+        <input type="checkbox" id="soundToggle" style="width:auto; margin-bottom:0;">
+        🔊 Sons de navegação ativados
+      </label>
+
+      <button class="modal-btn btn-danger" onclick="resetCurrentProfile()">↺ Restaurar padrão deste perfil</button>
 
       <hr class="modal-divider">
 
@@ -633,6 +702,20 @@
   <div id="screensaver" onclick="dismissScreensaver()">
     <div class="ss-clock" id="ssClock">--:--</div>
     <div class="ss-date" id="ssDate">--</div>
+  </div>
+
+  <div id="profileTransition"></div>
+
+  <div class="modal-overlay" id="pinModalOverlay">
+    <div class="modal" style="width: 320px; text-align: center;">
+      <h2>🔒 Digite o PIN</h2>
+      <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" style="text-align:center; font-size:28px; letter-spacing:10px;">
+      <div id="pinError" style="color: var(--danger-color); font-size: 13px; margin-bottom: 14px; min-height: 16px;"></div>
+      <div class="modal-buttons">
+        <button class="modal-btn btn-cancel" onclick="cancelPinPrompt()">Cancelar</button>
+        <button class="modal-btn btn-save" onclick="submitPinPrompt()">Confirmar</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -720,31 +803,44 @@
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   
   function playSound(type) {
+    if (localStorage.getItem('tvSoundEnabled') === 'false') return;
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') {
       audioCtx.resume();
     }
+
+    const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.connect(gain);
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(audioCtx.destination);
 
     if (type === 'move') {
+      // Som de foco suave: seno filtrado, com entrada e saída graduais (sem "clique" de transiente)
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.05);
-      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.05);
+      filter.frequency.value = 1400;
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.07);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.045, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.11);
     } else if (type === 'click') {
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.06);
-      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.06);
+      // Som de confirmação mais macio: triangular (em vez de quadrada) e filtrado, sem estourar
+      osc.type = 'triangle';
+      filter.frequency.value = 950;
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.09);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.13);
     }
   }
 
@@ -767,6 +863,15 @@
   }
 
   function launchApp(app) {
+    const profile = getActiveProfile();
+    if (app.protected && profile.pin) {
+      requestPin(profile.pin, () => doLaunchApp(app));
+      return;
+    }
+    doLaunchApp(app);
+  }
+
+  function doLaunchApp(app) {
     playSound('click');
     const faviconUrl = getFaviconUrl(app.url);
     
@@ -814,7 +919,8 @@
       }
       actionsHtml += `</div>`;
 
-      a.innerHTML = actionsHtml + createTileContent(app);
+      const lockBadge = app.protected ? `<div class="tile-lock-badge">🔒</div>` : '';
+      a.innerHTML = actionsHtml + lockBadge + createTileContent(app);
 
       a.onfocus = () => playSound('move');
       a.onclick = (e) => {
@@ -943,6 +1049,7 @@
     document.getElementById('appName').value = '';
     document.getElementById('appUrl').value = '';
     document.getElementById('appIcon').value = '';
+    document.getElementById('appProtected').checked = false;
     renderColorSwatches(null);
     modal.style.display = 'flex';
     document.getElementById('appName').focus();
@@ -961,6 +1068,7 @@
     document.getElementById('appName').value = app.name;
     document.getElementById('appUrl').value = app.url;
     document.getElementById('appIcon').value = app.initial || '';
+    document.getElementById('appProtected').checked = !!app.protected;
     renderColorSwatches(app.grad);
     modal.style.display = 'flex';
     document.getElementById('appName').focus();
@@ -979,6 +1087,7 @@
     const editIndexVal = document.getElementById('editIndex').value;
     const manualIcon = document.getElementById('appIcon').value.trim();
     const colorIndexVal = parseInt(document.getElementById('appColorIndex').value);
+    const isProtected = document.getElementById('appProtected').checked;
 
     if (!name || !url) {
       alert("Por favor, preencha o nome e a URL.");
@@ -999,11 +1108,12 @@
       apps[idx].name = name;
       apps[idx].url = url;
       apps[idx].initial = manualIcon || name.charAt(0).toUpperCase();
+      apps[idx].protected = isProtected;
       if (chosenGrad) apps[idx].grad = chosenGrad;
     } else {
       const initial = manualIcon || name.charAt(0).toUpperCase();
       const grad = chosenGrad || gradients[Math.floor(Math.random() * gradients.length)];
-      apps.push({ name, url, initial, grad, isDefault: false });
+      apps.push({ name, url, initial, grad, isDefault: false, protected: isProtected });
     }
 
     saveApps(apps);
@@ -1024,6 +1134,62 @@
     }
   }
 
+  // ===== Prompt de PIN reutilizável =====
+  let pinPromptCallback = null;
+  let pinPromptCancelCallback = null;
+  let pinPromptTarget = null;
+
+  function requestPin(correctPin, onSuccess, onCancel) {
+    pinPromptCallback = onSuccess;
+    pinPromptCancelCallback = onCancel || null;
+    pinPromptTarget = correctPin;
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinError').textContent = '';
+    document.getElementById('pinModalOverlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('pinInput').focus(), 50);
+  }
+
+  function cancelPinPrompt() {
+    playSound('click');
+    document.getElementById('pinModalOverlay').style.display = 'none';
+    const cb = pinPromptCancelCallback;
+    pinPromptCallback = null;
+    pinPromptCancelCallback = null;
+    pinPromptTarget = null;
+    if (cb) cb();
+  }
+
+  function submitPinPrompt() {
+    const val = document.getElementById('pinInput').value.trim();
+    if (val === pinPromptTarget) {
+      playSound('click');
+      document.getElementById('pinModalOverlay').style.display = 'none';
+      const cb = pinPromptCallback;
+      pinPromptCallback = null;
+      pinPromptCancelCallback = null;
+      pinPromptTarget = null;
+      if (cb) cb();
+    } else {
+      document.getElementById('pinError').textContent = 'PIN incorreto, tente novamente.';
+      document.getElementById('pinInput').value = '';
+      document.getElementById('pinInput').focus();
+    }
+  }
+
+  document.getElementById('pinInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitPinPrompt();
+  });
+
+  // ===== Transição suave entre perfis =====
+  function withProfileTransition(fn) {
+    const overlay = document.getElementById('profileTransition');
+    overlay.classList.add('active');
+    setTimeout(() => {
+      fn();
+      setTimeout(() => overlay.classList.remove('active'), 80);
+    }, 220);
+  }
+
   // ===== Modal de Configurações / Perfis =====
   function populateProfileSelect() {
     const sel = document.getElementById('profileSelect');
@@ -1040,17 +1206,31 @@
   }
 
   function onProfileSelectChange() {
-    playSound('click');
     const sel = document.getElementById('profileSelect');
-    profilesData.activeProfileId = sel.value;
-    saveProfilesData(profilesData);
+    const targetId = sel.value;
+    const previousId = profilesData.activeProfileId;
+    const targetProfile = profilesData.profiles[targetId];
 
-    const profile = getActiveProfile();
-    document.getElementById('userNameInput').value = profile.name;
-    document.getElementById('themeSelect').value = profile.theme;
-    applyTheme(profile.theme);
-    renderApps();
-    updateClock();
+    const doSwitch = () => {
+      withProfileTransition(() => {
+        profilesData.activeProfileId = targetId;
+        saveProfilesData(profilesData);
+        const profile = getActiveProfile();
+        document.getElementById('userNameInput').value = profile.name;
+        document.getElementById('themeSelect').value = profile.theme;
+        document.getElementById('profilePinInput').value = profile.pin || '';
+        applyTheme(profile.theme);
+        renderApps();
+        updateClock();
+      });
+    };
+
+    if (targetProfile.pin) {
+      requestPin(targetProfile.pin, doSwitch, () => { sel.value = previousId; });
+    } else {
+      playSound('click');
+      doSwitch();
+    }
   }
 
   function createProfile() {
@@ -1067,14 +1247,17 @@
     };
     profilesData.activeProfileId = id;
     saveProfilesData(profilesData);
-
     input.value = '';
-    populateProfileSelect();
-    document.getElementById('userNameInput').value = name;
-    document.getElementById('themeSelect').value = 'theme-warm';
-    applyTheme('theme-warm');
-    renderApps();
-    updateClock();
+
+    withProfileTransition(() => {
+      populateProfileSelect();
+      document.getElementById('userNameInput').value = name;
+      document.getElementById('themeSelect').value = 'theme-warm';
+      document.getElementById('profilePinInput').value = '';
+      applyTheme('theme-warm');
+      renderApps();
+      updateClock();
+    });
   }
 
   function deleteCurrentProfile() {
@@ -1085,26 +1268,53 @@
     }
     if (!confirm(`Excluir o perfil "${getActiveProfile().name}" e todos os seus atalhos?`)) return;
 
-    playSound('click');
     delete profilesData.profiles[profilesData.activeProfileId];
     profilesData.activeProfileId = Object.keys(profilesData.profiles)[0];
     saveProfilesData(profilesData);
 
+    withProfileTransition(() => {
+      const profile = getActiveProfile();
+      document.getElementById('userNameInput').value = profile.name;
+      document.getElementById('themeSelect').value = profile.theme;
+      document.getElementById('profilePinInput').value = profile.pin || '';
+      applyTheme(profile.theme);
+      populateProfileSelect();
+      renderApps();
+      updateClock();
+    });
+  }
+
+  function resetCurrentProfile() {
+    if (!confirm('Isso vai apagar os atalhos personalizados deste perfil e voltar ao layout e tema padrão. O nome e o PIN não são afetados. Continuar?')) return;
+    playSound('click');
     const profile = getActiveProfile();
-    document.getElementById('userNameInput').value = profile.name;
-    document.getElementById('themeSelect').value = profile.theme;
-    applyTheme(profile.theme);
-    populateProfileSelect();
+    profile.apps = JSON.parse(JSON.stringify(defaultAppsList));
+    profile.theme = 'theme-warm';
+    saveProfilesData(profilesData);
+
+    document.getElementById('themeSelect').value = 'theme-warm';
+    applyTheme('theme-warm');
     renderApps();
-    updateClock();
   }
 
   function openSettingsModal() {
+    const profile = getActiveProfile();
+    if (profile.pin) {
+      requestPin(profile.pin, actuallyOpenSettingsModal);
+    } else {
+      playSound('click');
+      actuallyOpenSettingsModal();
+    }
+  }
+
+  function actuallyOpenSettingsModal() {
     playSound('click');
     populateProfileSelect();
     const profile = getActiveProfile();
     document.getElementById('userNameInput').value = profile.name;
     document.getElementById('themeSelect').value = profile.theme;
+    document.getElementById('profilePinInput').value = profile.pin || '';
+    document.getElementById('soundToggle').checked = localStorage.getItem('tvSoundEnabled') !== 'false';
 
     settingsModal.style.display = 'flex';
     document.getElementById('userNameInput').focus();
@@ -1117,12 +1327,22 @@
   }
 
   function saveSettings() {
+    const pinVal = document.getElementById('profilePinInput').value.trim();
+    if (pinVal && !/^\d{4}$/.test(pinVal)) {
+      alert('O PIN deve ter exatamente 4 dígitos, ou fique em branco para não usar PIN.');
+      return;
+    }
+
     playSound('click');
     const newName = document.getElementById('userNameInput').value.trim();
     const profile = getActiveProfile();
     profile.name = newName || profile.name;
     profile.theme = document.getElementById('themeSelect').value;
+    profile.pin = pinVal;
     saveProfilesData(profilesData);
+
+    const soundOn = document.getElementById('soundToggle').checked;
+    localStorage.setItem('tvSoundEnabled', soundOn ? 'true' : 'false');
 
     applyTheme(profile.theme);
     populateProfileSelect();
@@ -1197,9 +1417,12 @@
   window.addEventListener('keydown', function(event) {
     resetIdleTimer();
     const active = document.activeElement;
-    const isModalOpen = modal.style.display === 'flex' || settingsModal.style.display === 'flex';
+    const pinModal = document.getElementById('pinModalOverlay');
+    const isPinModalOpen = pinModal.style.display === 'flex';
+    const isModalOpen = modal.style.display === 'flex' || settingsModal.style.display === 'flex' || isPinModalOpen;
 
     if (event.key === "Escape" || event.key === "Back" || event.keyCode === 10009 || event.keyCode === 461) {
+      if (isPinModalOpen) { cancelPinPrompt(); return; }
       if (modal.style.display === 'flex') closeModal();
       if (settingsModal.style.display === 'flex') closeSettingsModal();
       return;
@@ -1262,6 +1485,7 @@
     resetIdleTimer();
     if (event.target === modal) closeModal(); 
     if (event.target === settingsModal) closeSettingsModal();
+    if (event.target === document.getElementById('pinModalOverlay')) cancelPinPrompt();
   }
   window.onmousemove = resetIdleTimer;
 
