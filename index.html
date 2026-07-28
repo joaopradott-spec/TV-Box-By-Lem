@@ -89,6 +89,30 @@
     align-items: center;
   }
 
+  /* Papel de parede customizado: fica atrás de tudo, com um véu escuro por cima
+     para manter os tiles e o texto legíveis independente da foto escolhida. */
+  #wallpaperLayer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  #wallpaperLayer.active { opacity: 1; }
+  #wallpaperVeil {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: rgba(10, 8, 6, 0.55);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  #wallpaperVeil.active { opacity: 1; }
+
   .glow {
     position: absolute;
     top: 50%;
@@ -100,8 +124,11 @@
     opacity: 0.9;
     pointer-events: none;
     z-index: 0;
-    transition: background 0.4s ease;
+    transition: background 0.4s ease, opacity 0.4s ease;
   }
+  /* Com papel de parede ativo, o glow original (pensado para o gradiente liso)
+     fica mais discreto para não brigar visualmente com a foto de fundo. */
+  body.has-wallpaper .glow { opacity: 0.35; }
 
   .settings-btn {
     position: absolute;
@@ -178,7 +205,22 @@
     z-index: 2;
     text-align: center;
     margin-bottom: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
+
+  .greeting-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 14px;
+    border: 3px solid var(--accent-highlight);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    display: none;
+  }
+  .greeting-avatar.active { display: block; }
 
   .greeting {
     font-family: 'Fredoka', sans-serif;
@@ -565,6 +607,151 @@
     margin: 8px 0 20px 0;
   }
 
+  /* ===== Escolha de papel de parede / ícone de perfil (Pixabay) ===== */
+  .picker-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .picker-preview-swatch {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+  .picker-preview-swatch.circle { border-radius: 50%; }
+  .picker-preview-swatch.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: #14110F;
+    color: var(--text-muted);
+  }
+
+  .picker-preview-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .picker-btn {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-soft);
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .picker-btn:hover, .picker-btn:focus-visible {
+    background: rgba(255,255,255,0.14);
+    border-color: var(--accent-highlight);
+    outline: none;
+  }
+  .picker-btn.remove { color: var(--danger-color); }
+
+  #imagePickerModalOverlay .modal,
+  #wallpaperPickerModalOverlay .modal {
+    width: 640px;
+    max-width: 92vw;
+  }
+
+  .image-search-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .image-search-row input {
+    margin-bottom: 0;
+    flex: 1;
+  }
+  .image-search-row button {
+    flex: 0 0 auto;
+    padding: 0 20px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent-highlight);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Sora', sans-serif;
+  }
+  .image-search-row button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    min-height: 160px;
+    max-height: 46vh;
+    overflow-y: auto;
+    margin-bottom: 8px;
+  }
+
+  .image-grid-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 3px solid transparent;
+    background: #14110F;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .image-grid-item.avatar-mode { border-radius: 50%; }
+  .image-grid-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .image-grid-item:hover, .image-grid-item:focus-visible {
+    border-color: var(--accent-highlight);
+    transform: scale(1.05);
+    outline: none;
+    z-index: 2;
+  }
+
+  .image-picker-status {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 30px 10px;
+    font-family: 'Fredoka', sans-serif;
+  }
+
+  .pixabay-credit {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    margin-bottom: 14px;
+    opacity: 0.7;
+  }
+  .pixabay-credit a { color: var(--text-muted); }
+
+  .api-key-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: -10px 0 18px 0;
+    line-height: 1.4;
+  }
+  .api-key-hint a { color: var(--accent-highlight); }
+
   /* Modo Descanso / Screensaver */
   #screensaver {
     position: fixed;
@@ -592,6 +779,9 @@
 </head>
 <body class="theme-warm">
 
+  <div id="wallpaperLayer"></div>
+  <div id="wallpaperVeil"></div>
+
   <div class="glow"></div>
 
   <button class="settings-btn" onclick="openSettingsModal()" title="Configurações">⚙️</button>
@@ -611,6 +801,7 @@
   </div>
 
   <div class="greeting-wrap">
+    <img id="greetingAvatar" class="greeting-avatar" alt="">
     <div class="greeting" id="greeting">Boa tarde, <span>Usuario!</span></div>
     <div class="subtext">O que você quer assistir hoje? Arraste os cards ou use as setas para reorganizar.</div>
   </div>
@@ -672,6 +863,28 @@
         <option value="theme-gray">Cinza</option>
       </select>
 
+      <label>Ícone de perfil (foto):</label>
+      <div class="picker-preview-row">
+        <div class="picker-preview-swatch circle empty" id="avatarPreviewSwatch">👤</div>
+        <div class="picker-preview-actions">
+          <button type="button" class="picker-btn" onclick="openImagePicker('avatar')">🔍 Escolher foto</button>
+          <button type="button" class="picker-btn remove" id="avatarRemoveBtn" style="display:none;" onclick="removeAvatar()">Remover foto</button>
+        </div>
+      </div>
+
+      <label>Papel de parede (deste perfil):</label>
+      <div class="picker-preview-row">
+        <div class="picker-preview-swatch empty" id="wallpaperPreviewSwatch">🖼️</div>
+        <div class="picker-preview-actions">
+          <button type="button" class="picker-btn" onclick="openImagePicker('wallpaper')">🔍 Escolher papel de parede</button>
+          <button type="button" class="picker-btn remove" id="wallpaperRemoveBtn" style="display:none;" onclick="removeWallpaper()">Remover papel de parede</button>
+        </div>
+      </div>
+
+      <label for="pixabayKeyInput">Chave da API do Pixabay (para buscar fotos):</label>
+      <input type="password" id="pixabayKeyInput" placeholder="Cole sua chave aqui">
+      <div class="api-key-hint">Grátis e sem validade. Pegue a sua em <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (precisa criar uma conta gratuita).</div>
+
       <label for="profilePinInput">PIN deste perfil (opcional, 4 dígitos — protege as configurações e apps marcados):</label>
       <input type="password" id="profilePinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="Deixe em branco para não usar PIN">
 
@@ -695,6 +908,23 @@
       <div class="modal-buttons">
         <button class="modal-btn btn-cancel" onclick="closeSettingsModal()">Fechar</button>
         <button class="modal-btn btn-save" onclick="saveSettings()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="imagePickerModalOverlay">
+    <div class="modal">
+      <h2 id="imagePickerTitle">🖼️ Escolher imagem</h2>
+      <div class="image-search-row">
+        <input type="text" id="imagePickerQuery" placeholder="Ex: praia, montanha, gatos...">
+        <button type="button" id="imagePickerSearchBtn" onclick="runImageSearch()">Buscar</button>
+      </div>
+      <div class="pixabay-credit">Fotos via <a href="https://pixabay.com" target="_blank" rel="noopener">Pixabay</a></div>
+      <div class="image-grid" id="imagePickerGrid">
+        <div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn btn-cancel" onclick="closeImagePicker()">Fechar</button>
       </div>
     </div>
   </div>
@@ -798,6 +1028,11 @@
   let idleTimer = null;
   const IDLE_TIME_LIMIT = 120000;
   let dragSrcIndex = null;
+
+  // ===== Estado do seletor de imagens (Pixabay) =====
+  const PIXABAY_KEY_KEY = 'tvPixabayApiKey'; // chave da API, salva globalmente (não é por perfil)
+  let imagePickerMode = null; // 'avatar' | 'wallpaper'
+  let imagePickerSearchToken = 0; // evita que uma busca antiga sobrescreva uma mais recente
 
   // Web Audio API para sons refinados
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1180,6 +1415,231 @@
     if (e.key === 'Enter') submitPinPrompt();
   });
 
+  // ===== Seletor de imagens (Pixabay): papel de parede e ícone de perfil =====
+
+  function getPixabayKey() {
+    return (localStorage.getItem(PIXABAY_KEY_KEY) || '').trim();
+  }
+
+  function openImagePicker(mode) {
+    imagePickerMode = mode;
+    const grid = document.getElementById('imagePickerGrid');
+    const title = document.getElementById('imagePickerTitle');
+    const queryInput = document.getElementById('imagePickerQuery');
+
+    title.textContent = mode === 'avatar' ? '👤 Escolher ícone de perfil' : '🖼️ Escolher papel de parede';
+    queryInput.value = '';
+    grid.className = 'image-grid';
+    grid.innerHTML = '<div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>';
+
+    if (!getPixabayKey()) {
+      grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pixabay configurada.<br>Feche esta janela, cole sua chave no campo "Chave da API do Pixabay" nas Configurações e tente de novo.</div>';
+    }
+
+    document.getElementById('imagePickerModalOverlay').style.display = 'flex';
+    setTimeout(() => queryInput.focus(), 50);
+  }
+
+  function closeImagePicker() {
+    playSound('click');
+    document.getElementById('imagePickerModalOverlay').style.display = 'none';
+    imagePickerMode = null;
+  }
+
+  document.getElementById('imagePickerQuery').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runImageSearch();
+  });
+
+  async function runImageSearch() {
+    const key = getPixabayKey();
+    const grid = document.getElementById('imagePickerGrid');
+    const query = document.getElementById('imagePickerQuery').value.trim();
+
+    if (!key) {
+      grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pixabay configurada.<br>Feche esta janela, cole sua chave nas Configurações e tente de novo.</div>';
+      return;
+    }
+    if (!query) {
+      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar (ex: praia, montanha, gatos...).</div>';
+      return;
+    }
+
+    playSound('click');
+    const myToken = ++imagePickerSearchToken;
+    const searchBtn = document.getElementById('imagePickerSearchBtn');
+    searchBtn.disabled = true;
+    grid.className = 'image-grid';
+    grid.innerHTML = '<div class="image-picker-status">Buscando fotos...</div>';
+
+    // Retrato para ícone de perfil, paisagem para papel de parede
+    const orientation = imagePickerMode === 'avatar' ? 'vertical' : 'horizontal';
+
+    try {
+      const url = `https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&image_type=photo&safesearch=true&orientation=${orientation}&per_page=20`;
+      const res = await fetch(url);
+
+      if (myToken !== imagePickerSearchToken) return; // uma busca mais nova já foi feita
+
+      if (res.status === 429) {
+        grid.innerHTML = '<div class="image-picker-status">Muitas buscas em pouco tempo. Espere um minuto e tente de novo.</div>';
+        return;
+      }
+      if (res.status === 400 || res.status === 401 || res.status === 403) {
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Chave da API inválida. Confira a chave nas Configurações.</div>';
+        return;
+      }
+      if (!res.ok) {
+        grid.innerHTML = '<div class="image-picker-status">Não foi possível buscar agora. Tente novamente.</div>';
+        return;
+      }
+
+      const data = await res.json();
+      if (myToken !== imagePickerSearchToken) return;
+
+      if (!data.hits || data.hits.length === 0) {
+        grid.innerHTML = '<div class="image-picker-status">Nenhuma foto encontrada para esse tema. Tente outra palavra.</div>';
+        return;
+      }
+
+      grid.innerHTML = '';
+      data.hits.forEach(hit => {
+        const item = document.createElement('div');
+        item.className = 'image-grid-item' + (imagePickerMode === 'avatar' ? ' avatar-mode' : '');
+        item.tabIndex = 0;
+        item.title = 'Selecionar esta foto';
+        item.innerHTML = `<img src="${hit.webformatURL}" alt="${(hit.tags || '').replace(/"/g, '')}" loading="lazy">`;
+        const choose = () => selectPickedImage(hit);
+        item.onclick = choose;
+        item.onkeydown = (e) => { if (e.key === 'Enter') choose(); };
+        grid.appendChild(item);
+      });
+    } catch (err) {
+      if (myToken !== imagePickerSearchToken) return;
+      grid.innerHTML = '<div class="image-picker-status">Sem conexão com a internet no momento. Tente novamente.</div>';
+    } finally {
+      if (myToken === imagePickerSearchToken) searchBtn.disabled = false;
+    }
+  }
+
+  // Converte a imagem escolhida para base64 e salva no perfil, para não depender
+  // da URL do Pixabay (que expira) e para continuar funcionando offline depois.
+  async function selectPickedImage(hit) {
+    const grid = document.getElementById('imagePickerGrid');
+    grid.innerHTML = '<div class="image-picker-status">Baixando imagem escolhida...</div>';
+
+    // Papel de parede usa a versão maior (até 1280px); ícone de perfil não precisa de tanto.
+    const sourceUrl = imagePickerMode === 'avatar' ? hit.webformatURL : (hit.largeImageURL || hit.webformatURL);
+
+    try {
+      const base64 = await urlToBase64(sourceUrl);
+      if (imagePickerMode === 'avatar') {
+        applyAvatar(base64);
+      } else {
+        applyWallpaper(base64);
+      }
+      playSound('click');
+      closeImagePicker();
+    } catch (err) {
+      grid.innerHTML = '<div class="image-picker-status">Não foi possível salvar essa imagem. Tente escolher outra foto.</div>';
+    }
+  }
+
+  function urlToBase64(url) {
+    return fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error('Falha ao baixar imagem');
+        return res.blob();
+      })
+      .then(blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }));
+  }
+
+  function applyAvatar(base64) {
+    const profile = getActiveProfile();
+    profile.avatar = base64;
+    saveProfilesData(profilesData);
+    refreshAvatarUI();
+  }
+
+  function removeAvatar() {
+    playSound('click');
+    const profile = getActiveProfile();
+    delete profile.avatar;
+    saveProfilesData(profilesData);
+    refreshAvatarUI();
+  }
+
+  function applyWallpaper(base64) {
+    const profile = getActiveProfile();
+    profile.wallpaper = base64;
+    saveProfilesData(profilesData);
+    refreshWallpaperUI();
+  }
+
+  function removeWallpaper() {
+    playSound('click');
+    const profile = getActiveProfile();
+    delete profile.wallpaper;
+    saveProfilesData(profilesData);
+    refreshWallpaperUI();
+  }
+
+  // Atualiza tudo relacionado ao avatar: preview nas Configurações + avatar acima da saudação
+  function refreshAvatarUI() {
+    const profile = getActiveProfile();
+    const previewSwatch = document.getElementById('avatarPreviewSwatch');
+    const removeBtn = document.getElementById('avatarRemoveBtn');
+    const greetingAvatar = document.getElementById('greetingAvatar');
+
+    if (profile.avatar) {
+      previewSwatch.style.backgroundImage = `url(${profile.avatar})`;
+      previewSwatch.textContent = '';
+      previewSwatch.classList.remove('empty');
+      removeBtn.style.display = 'block';
+      greetingAvatar.src = profile.avatar;
+      greetingAvatar.classList.add('active');
+    } else {
+      previewSwatch.style.backgroundImage = '';
+      previewSwatch.textContent = '👤';
+      previewSwatch.classList.add('empty');
+      removeBtn.style.display = 'none';
+      greetingAvatar.classList.remove('active');
+      greetingAvatar.removeAttribute('src');
+    }
+  }
+
+  // Atualiza tudo relacionado ao papel de parede: preview nas Configurações + fundo real da tela
+  function refreshWallpaperUI() {
+    const profile = getActiveProfile();
+    const previewSwatch = document.getElementById('wallpaperPreviewSwatch');
+    const removeBtn = document.getElementById('wallpaperRemoveBtn');
+    const wallpaperLayer = document.getElementById('wallpaperLayer');
+    const wallpaperVeil = document.getElementById('wallpaperVeil');
+
+    if (profile.wallpaper) {
+      previewSwatch.style.backgroundImage = `url(${profile.wallpaper})`;
+      previewSwatch.textContent = '';
+      previewSwatch.classList.remove('empty');
+      removeBtn.style.display = 'block';
+      wallpaperLayer.style.backgroundImage = `url(${profile.wallpaper})`;
+      wallpaperLayer.classList.add('active');
+      wallpaperVeil.classList.add('active');
+      document.body.classList.add('has-wallpaper');
+    } else {
+      previewSwatch.style.backgroundImage = '';
+      previewSwatch.textContent = '🖼️';
+      previewSwatch.classList.add('empty');
+      removeBtn.style.display = 'none';
+      wallpaperLayer.classList.remove('active');
+      wallpaperVeil.classList.remove('active');
+      document.body.classList.remove('has-wallpaper');
+    }
+  }
+
   // ===== Transição suave entre perfis =====
   function withProfileTransition(fn) {
     const overlay = document.getElementById('profileTransition');
@@ -1220,6 +1680,8 @@
         document.getElementById('themeSelect').value = profile.theme;
         document.getElementById('profilePinInput').value = profile.pin || '';
         applyTheme(profile.theme);
+        refreshAvatarUI();
+        refreshWallpaperUI();
         renderApps();
         updateClock();
       });
@@ -1255,6 +1717,8 @@
       document.getElementById('themeSelect').value = 'theme-warm';
       document.getElementById('profilePinInput').value = '';
       applyTheme('theme-warm');
+      refreshAvatarUI();
+      refreshWallpaperUI();
       renderApps();
       updateClock();
     });
@@ -1278,6 +1742,8 @@
       document.getElementById('themeSelect').value = profile.theme;
       document.getElementById('profilePinInput').value = profile.pin || '';
       applyTheme(profile.theme);
+      refreshAvatarUI();
+      refreshWallpaperUI();
       populateProfileSelect();
       renderApps();
       updateClock();
@@ -1285,15 +1751,19 @@
   }
 
   function resetCurrentProfile() {
-    if (!confirm('Isso vai apagar os atalhos personalizados deste perfil e voltar ao layout e tema padrão. O nome e o PIN não são afetados. Continuar?')) return;
+    if (!confirm('Isso vai apagar os atalhos personalizados, o tema, o ícone de perfil e o papel de parede deste perfil, voltando tudo ao padrão. O nome e o PIN não são afetados. Continuar?')) return;
     playSound('click');
     const profile = getActiveProfile();
     profile.apps = JSON.parse(JSON.stringify(defaultAppsList));
     profile.theme = 'theme-warm';
+    delete profile.avatar;
+    delete profile.wallpaper;
     saveProfilesData(profilesData);
 
     document.getElementById('themeSelect').value = 'theme-warm';
     applyTheme('theme-warm');
+    refreshAvatarUI();
+    refreshWallpaperUI();
     renderApps();
   }
 
