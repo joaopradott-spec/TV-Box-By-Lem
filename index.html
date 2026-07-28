@@ -204,13 +204,17 @@
     color: white;
     position: relative;
     overflow: hidden;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     cursor: pointer;
     border: 3px solid transparent;
     opacity: 0;
     animation: popIn 0.4s ease forwards;
   }
+
+  .tile[draggable="true"] { cursor: grab; }
+  .tile.dragging { opacity: 0.4; cursor: grabbing; }
+  .tile.drag-over { outline: 3px dashed var(--accent-highlight); outline-offset: 4px; }
 
   .tile::after {
     content: '';
@@ -396,6 +400,8 @@
     padding: 36px;
     border-radius: var(--tile-radius);
     width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     color: var(--text-soft);
     border: 1px solid rgba(255,255,255,0.15);
@@ -459,6 +465,55 @@
 
   .btn-cancel { background: #3A2F28; color: white; }
   .btn-save { background: var(--accent-highlight); color: #FFF; }
+  .btn-danger { background: var(--danger-color); color: #FFF; width: 100%; margin-top: 4px; }
+
+  .inline-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .inline-row input { margin-bottom: 18px; }
+  .inline-row button {
+    flex: 0 0 auto;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent-highlight);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    height: 52px;
+  }
+
+  .color-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .swatch:hover, .swatch:focus-visible { transform: scale(1.15); outline: none; }
+  .swatch.selected { border-color: white; box-shadow: 0 0 0 2px var(--accent-highlight); }
+  .swatch.random {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #3A2F28;
+    font-size: 16px;
+  }
+
+  hr.modal-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    margin: 8px 0 20px 0;
+  }
 
   /* Modo Descanso / Screensaver */
   #screensaver {
@@ -507,12 +562,12 @@
 
   <div class="greeting-wrap">
     <div class="greeting" id="greeting">Boa tarde, <span>Usuario!</span></div>
-    <div class="subtext">O que você quer assistir hoje? Use as setas para navegar.</div>
+    <div class="subtext">O que você quer assistir hoje? Arraste os cards ou use as setas para reorganizar.</div>
   </div>
 
   <div class="tiles" id="tiles"></div>
 
-  <div class="hint">Aperte Enter / OK para abrir o app ou clique nas setinhas para reorganizar</div>
+  <div class="hint">Aperte Enter / OK para abrir o app, arraste para reordenar, ou use ◀▶</div>
 
   <div class="magic-text">Essa é a magia da programação</div>
 
@@ -528,6 +583,11 @@
       <input type="text" id="appName" placeholder="Ex: Receitas">
       <label for="appUrl">Endereço (URL):</label>
       <input type="text" id="appUrl" placeholder="Ex: https://youtube.com">
+      <label for="appIcon">Ícone (emoji ou letra — opcional):</label>
+      <input type="text" id="appIcon" placeholder="Deixe em branco para usar a 1ª letra do nome" maxlength="2">
+      <label>Cor do tile (usada se o ícone do site não carregar):</label>
+      <div class="color-swatches" id="colorSwatches"></div>
+      <input type="hidden" id="appColorIndex" value="-1">
       <div class="modal-buttons">
         <button class="modal-btn btn-cancel" onclick="closeModal()">Cancelar</button>
         <button class="modal-btn btn-save" onclick="saveApp()">Salvar</button>
@@ -538,10 +598,14 @@
   <div class="modal-overlay" id="settingsModalOverlay">
     <div class="modal">
       <h2>⚙️ Configurações</h2>
-      <label for="userNameInput">Nome de usuário:</label>
+
+      <label for="profileSelect">Perfil ativo:</label>
+      <select id="profileSelect" onchange="onProfileSelectChange()"></select>
+
+      <label for="userNameInput">Nome de usuário (deste perfil):</label>
       <input type="text" id="userNameInput" placeholder="Ex: jorge">
-      
-      <label for="themeSelect">Tema de Cores:</label>
+
+      <label for="themeSelect">Tema de Cores (deste perfil):</label>
       <select id="themeSelect">
         <option value="theme-warm">Café Quente (Padrão)</option>
         <option value="theme-emerald">Verde Esmeralda</option>
@@ -549,8 +613,18 @@
         <option value="theme-sunset">Pôr do Sol</option>
       </select>
 
+      <hr class="modal-divider">
+
+      <label for="newProfileName">Criar novo perfil:</label>
+      <div class="inline-row">
+        <input type="text" id="newProfileName" placeholder="Nome do novo perfil">
+        <button type="button" onclick="createProfile()">+</button>
+      </div>
+
+      <button class="modal-btn btn-danger" id="deleteProfileBtn" onclick="deleteCurrentProfile()">Excluir este perfil</button>
+
       <div class="modal-buttons">
-        <button class="modal-btn btn-cancel" onclick="closeSettingsModal()">Cancelar</button>
+        <button class="modal-btn btn-cancel" onclick="closeSettingsModal()">Fechar</button>
         <button class="modal-btn btn-save" onclick="saveSettings()">Salvar</button>
       </div>
     </div>
@@ -562,9 +636,7 @@
   </div>
 
 <script>
-  // Chave correta e consistente para persistência local
-  const STORAGE_KEY = 'tvAppsLayout';
-
+  // ===== Dados padrão de apps (usados para novos perfis / migração) =====
   const defaultAppsList = [
     { name: "Netflix",     url: "https://www.netflix.com",        initial: "N", grad: ["#C11119", "#7A0A10"], isDefault: true },
     { name: "YouTube",     url: "https://www.youtube.com",        initial: "▶", grad: ["#E8342A", "#8E1A14"], isDefault: true },
@@ -573,20 +645,65 @@
     { name: "Internet",    url: "https://www.google.com",         initial: "🌐", grad: ["#E8A854", "#8A5A1E"], isDefault: true },
   ];
 
-  function getApps() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) {
-      return JSON.parse(JSON.stringify(defaultAppsList));
+  const gradients = [
+    ["#6b21a8", "#3b0764"], ["#047857", "#064e3b"], 
+    ["#be123c", "#881337"], ["#1d4ed8", "#1e3a8a"],
+    ["#b45309", "#78350f"], ["#4338ca", "#312e81"],
+    ["#be185d", "#831843"]
+  ];
+
+  // ===== Perfis (nome, tema e atalhos separados por pessoa) =====
+  const PROFILES_KEY = 'tvProfilesData';
+  // Chaves antigas, usadas só para migrar dados de uma versão sem perfis
+  const LEGACY_APPS_KEY = 'tvAppsLayout';
+  const LEGACY_NAME_KEY = 'tvUserName';
+  const LEGACY_THEME_KEY = 'tvTheme';
+
+  function loadProfilesData() {
+    const raw = localStorage.getItem(PROFILES_KEY);
+    if (raw) {
+      try { return JSON.parse(raw); } catch {}
     }
+
+    // Migração: se já existia um layout salvo no formato antigo, aproveita ele
+    let legacyApps = null;
     try {
-      return JSON.parse(saved);
-    } catch {
-      return JSON.parse(JSON.stringify(defaultAppsList));
-    }
+      const legacyRaw = localStorage.getItem(LEGACY_APPS_KEY);
+      legacyApps = legacyRaw ? JSON.parse(legacyRaw) : null;
+    } catch { legacyApps = null; }
+    if (!legacyApps) legacyApps = JSON.parse(JSON.stringify(defaultAppsList));
+
+    const data = {
+      activeProfileId: 'p1',
+      profiles: {
+        p1: {
+          name: localStorage.getItem(LEGACY_NAME_KEY) || 'Mãe!',
+          theme: localStorage.getItem(LEGACY_THEME_KEY) || 'theme-warm',
+          apps: legacyApps
+        }
+      }
+    };
+    saveProfilesData(data);
+    return data;
+  }
+
+  function saveProfilesData(data) {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(data));
+  }
+
+  let profilesData = loadProfilesData();
+
+  function getActiveProfile() {
+    return profilesData.profiles[profilesData.activeProfileId];
+  }
+
+  function getApps() {
+    return getActiveProfile().apps;
   }
 
   function saveApps(apps) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(apps));
+    getActiveProfile().apps = apps;
+    saveProfilesData(profilesData);
   }
 
   const tilesEl = document.getElementById('tiles');
@@ -597,6 +714,7 @@
 
   let idleTimer = null;
   const IDLE_TIME_LIMIT = 120000;
+  let dragSrcIndex = null;
 
   // Web Audio API para sons refinados
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -612,7 +730,6 @@
     gain.connect(audioCtx.destination);
 
     if (type === 'move') {
-      // Som sutil de foco
       osc.type = 'sine';
       osc.frequency.setValueAtTime(400, audioCtx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.05);
@@ -621,7 +738,6 @@
       osc.start();
       osc.stop(audioCtx.currentTime + 0.05);
     } else if (type === 'click') {
-      // Som de botão físico pressionado (clique abafado/seco)
       osc.type = 'square';
       osc.frequency.setValueAtTime(180, audioCtx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.06);
@@ -631,13 +747,6 @@
       osc.stop(audioCtx.currentTime + 0.06);
     }
   }
-
-  const gradients = [
-    ["#6b21a8", "#3b0764"], ["#047857", "#064e3b"], 
-    ["#be123c", "#881337"], ["#1d4ed8", "#1e3a8a"],
-    ["#b45309", "#78350f"], ["#4338ca", "#312e81"],
-    ["#be185d", "#831843"]
-  ];
 
   function getFaviconUrl(url) {
     try {
@@ -657,7 +766,6 @@
     `;
   }
 
-  // Tela cheia de carregamento com o ícone, nome e spinner
   function launchApp(app) {
     playSound('click');
     const faviconUrl = getFaviconUrl(app.url);
@@ -687,10 +795,11 @@
       const a = document.createElement('div');
       a.className = 'tile';
       a.tabIndex = 0;
+      a.draggable = true;
+      a.dataset.index = i;
       a.style.animationDelay = `${i * 0.05}s`;
       a.style.background = `linear-gradient(160deg, ${app.grad[0]}, ${app.grad[1]})`;
       
-      // Constrói os botões de ação dinamicamente dependendo se é padrão ou personalizado
       let actionsHtml = `
         <div class="tile-actions">
           <button class="action-btn" onclick="moveApp(${i}, -1, event)" title="Mover para esquerda">◀</button>
@@ -713,10 +822,16 @@
         launchApp(app);
       };
 
+      // Reordenar por arrastar (mouse/touch em navegadores comuns)
+      a.addEventListener('dragstart', handleDragStart);
+      a.addEventListener('dragover', handleDragOver);
+      a.addEventListener('dragleave', handleDragLeave);
+      a.addEventListener('drop', handleDrop);
+      a.addEventListener('dragend', handleDragEnd);
+
       tilesEl.appendChild(a);
     });
 
-    // Botão Adicionar sempre ao final
     const addBtn = document.createElement('button');
     addBtn.className = 'tile tile-add';
     addBtn.tabIndex = 0;
@@ -727,7 +842,45 @@
     tilesEl.appendChild(addBtn);
   }
 
-  // Função unificada de movimentação compatível com todos os itens armazenados
+  // ===== Drag-and-drop =====
+  function handleDragStart(e) {
+    dragSrcIndex = parseInt(this.dataset.index);
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(dragSrcIndex)); } catch {}
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+  }
+
+  function handleDragLeave() {
+    this.classList.remove('drag-over');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    const targetIndex = parseInt(this.dataset.index);
+    if (dragSrcIndex === null || isNaN(targetIndex) || targetIndex === dragSrcIndex) return;
+
+    let apps = getApps();
+    const [moved] = apps.splice(dragSrcIndex, 1);
+    apps.splice(targetIndex, 0, moved);
+    saveApps(apps);
+    renderApps();
+    playSound('click');
+  }
+
+  function handleDragEnd() {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.tile.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrcIndex = null;
+  }
+
+  // Botões ◀▶ continuam funcionando (essenciais pra quem usa controle remoto)
   function moveApp(index, direction, event) {
     event.preventDefault();
     event.stopPropagation();
@@ -745,12 +898,52 @@
     }
   }
 
+  // ===== Modal Adicionar/Editar app =====
+  function renderColorSwatches(selectedGrad) {
+    const container = document.getElementById('colorSwatches');
+    container.innerHTML = '';
+    document.getElementById('appColorIndex').value = '-1';
+
+    gradients.forEach((grad, i) => {
+      const sw = document.createElement('div');
+      sw.className = 'swatch';
+      sw.tabIndex = 0;
+      sw.style.background = `linear-gradient(160deg, ${grad[0]}, ${grad[1]})`;
+      sw.title = 'Escolher esta cor';
+      if (selectedGrad && selectedGrad[0] === grad[0] && selectedGrad[1] === grad[1]) {
+        sw.classList.add('selected');
+        document.getElementById('appColorIndex').value = i;
+      }
+      sw.onclick = () => selectSwatch(i, sw);
+      sw.onkeydown = (e) => { if (e.key === 'Enter') selectSwatch(i, sw); };
+      container.appendChild(sw);
+    });
+
+    const randomSw = document.createElement('div');
+    randomSw.className = 'swatch random';
+    randomSw.tabIndex = 0;
+    randomSw.title = 'Cor aleatória';
+    randomSw.textContent = '🎲';
+    randomSw.onclick = () => selectSwatch(-1, randomSw);
+    randomSw.onkeydown = (e) => { if (e.key === 'Enter') selectSwatch(-1, randomSw); };
+    container.appendChild(randomSw);
+  }
+
+  function selectSwatch(index, el) {
+    playSound('move');
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('appColorIndex').value = index;
+  }
+
   function openModal() {
     playSound('click');
     document.getElementById('modalTitle').textContent = "Adicionar Novo Link";
     document.getElementById('editIndex').value = '';
     document.getElementById('appName').value = '';
     document.getElementById('appUrl').value = '';
+    document.getElementById('appIcon').value = '';
+    renderColorSwatches(null);
     modal.style.display = 'flex';
     document.getElementById('appName').focus();
   }
@@ -767,6 +960,8 @@
     document.getElementById('editIndex').value = index;
     document.getElementById('appName').value = app.name;
     document.getElementById('appUrl').value = app.url;
+    document.getElementById('appIcon').value = app.initial || '';
+    renderColorSwatches(app.grad);
     modal.style.display = 'flex';
     document.getElementById('appName').focus();
   }
@@ -778,48 +973,12 @@
     if (firstTile) firstTile.focus();
   }
 
-  function openSettingsModal() {
-    playSound('click');
-    const currentName = localStorage.getItem('tvUserName') || 'Mãe!';
-    document.getElementById('userNameInput').value = currentName;
-    const currentTheme = localStorage.getItem('tvTheme') || 'theme-warm';
-    document.getElementById('themeSelect').value = currentTheme;
-
-    settingsModal.style.display = 'flex';
-    document.getElementById('userNameInput').focus();
-  }
-
-  function closeSettingsModal() {
-    playSound('click');
-    settingsModal.style.display = 'none';
-    document.querySelector('.settings-btn').focus();
-  }
-
-  function saveSettings() {
-    playSound('click');
-    const newName = document.getElementById('userNameInput').value.trim();
-    if (newName) {
-      localStorage.setItem('tvUserName', newName);
-    } else {
-      localStorage.removeItem('tvUserName');
-    }
-
-    const newTheme = document.getElementById('themeSelect').value;
-    localStorage.setItem('tvTheme', newTheme);
-    applyTheme(newTheme);
-
-    closeSettingsModal();
-    updateClock();
-  }
-
-  function applyTheme(themeClass) {
-    document.body.className = themeClass;
-  }
-
   function saveApp() {
     const name = document.getElementById('appName').value.trim();
     let url = document.getElementById('appUrl').value.trim();
     const editIndexVal = document.getElementById('editIndex').value;
+    const manualIcon = document.getElementById('appIcon').value.trim();
+    const colorIndexVal = parseInt(document.getElementById('appColorIndex').value);
 
     if (!name || !url) {
       alert("Por favor, preencha o nome e a URL.");
@@ -831,16 +990,20 @@
     }
 
     let apps = getApps();
+    const chosenGrad = (!isNaN(colorIndexVal) && colorIndexVal >= 0 && colorIndexVal < gradients.length)
+      ? gradients[colorIndexVal]
+      : null;
 
     if (editIndexVal !== '') {
       const idx = parseInt(editIndexVal);
       apps[idx].name = name;
       apps[idx].url = url;
-      apps[idx].initial = name.charAt(0).toUpperCase();
+      apps[idx].initial = manualIcon || name.charAt(0).toUpperCase();
+      if (chosenGrad) apps[idx].grad = chosenGrad;
     } else {
-      const initial = name.charAt(0).toUpperCase();
-      const randomGrad = gradients[Math.floor(Math.random() * gradients.length)];
-      apps.push({ name, url, initial, grad: randomGrad, isDefault: false });
+      const initial = manualIcon || name.charAt(0).toUpperCase();
+      const grad = chosenGrad || gradients[Math.floor(Math.random() * gradients.length)];
+      apps.push({ name, url, initial, grad, isDefault: false });
     }
 
     saveApps(apps);
@@ -861,7 +1024,130 @@
     }
   }
 
-  // Previsão do tempo
+  // ===== Modal de Configurações / Perfis =====
+  function populateProfileSelect() {
+    const sel = document.getElementById('profileSelect');
+    sel.innerHTML = '';
+    Object.keys(profilesData.profiles).forEach(id => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = profilesData.profiles[id].name;
+      if (id === profilesData.activeProfileId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    document.getElementById('deleteProfileBtn').style.display =
+      Object.keys(profilesData.profiles).length > 1 ? 'block' : 'none';
+  }
+
+  function onProfileSelectChange() {
+    playSound('click');
+    const sel = document.getElementById('profileSelect');
+    profilesData.activeProfileId = sel.value;
+    saveProfilesData(profilesData);
+
+    const profile = getActiveProfile();
+    document.getElementById('userNameInput').value = profile.name;
+    document.getElementById('themeSelect').value = profile.theme;
+    applyTheme(profile.theme);
+    renderApps();
+    updateClock();
+  }
+
+  function createProfile() {
+    playSound('click');
+    const input = document.getElementById('newProfileName');
+    const name = input.value.trim();
+    if (!name) { alert('Digite um nome para o novo perfil.'); return; }
+
+    const id = 'p' + Date.now();
+    profilesData.profiles[id] = {
+      name,
+      theme: 'theme-warm',
+      apps: JSON.parse(JSON.stringify(defaultAppsList))
+    };
+    profilesData.activeProfileId = id;
+    saveProfilesData(profilesData);
+
+    input.value = '';
+    populateProfileSelect();
+    document.getElementById('userNameInput').value = name;
+    document.getElementById('themeSelect').value = 'theme-warm';
+    applyTheme('theme-warm');
+    renderApps();
+    updateClock();
+  }
+
+  function deleteCurrentProfile() {
+    const ids = Object.keys(profilesData.profiles);
+    if (ids.length <= 1) {
+      alert('Não é possível excluir o único perfil existente.');
+      return;
+    }
+    if (!confirm(`Excluir o perfil "${getActiveProfile().name}" e todos os seus atalhos?`)) return;
+
+    playSound('click');
+    delete profilesData.profiles[profilesData.activeProfileId];
+    profilesData.activeProfileId = Object.keys(profilesData.profiles)[0];
+    saveProfilesData(profilesData);
+
+    const profile = getActiveProfile();
+    document.getElementById('userNameInput').value = profile.name;
+    document.getElementById('themeSelect').value = profile.theme;
+    applyTheme(profile.theme);
+    populateProfileSelect();
+    renderApps();
+    updateClock();
+  }
+
+  function openSettingsModal() {
+    playSound('click');
+    populateProfileSelect();
+    const profile = getActiveProfile();
+    document.getElementById('userNameInput').value = profile.name;
+    document.getElementById('themeSelect').value = profile.theme;
+
+    settingsModal.style.display = 'flex';
+    document.getElementById('userNameInput').focus();
+  }
+
+  function closeSettingsModal() {
+    playSound('click');
+    settingsModal.style.display = 'none';
+    document.querySelector('.settings-btn').focus();
+  }
+
+  function saveSettings() {
+    playSound('click');
+    const newName = document.getElementById('userNameInput').value.trim();
+    const profile = getActiveProfile();
+    profile.name = newName || profile.name;
+    profile.theme = document.getElementById('themeSelect').value;
+    saveProfilesData(profilesData);
+
+    applyTheme(profile.theme);
+    populateProfileSelect();
+    closeSettingsModal();
+    updateClock();
+  }
+
+  function applyTheme(themeClass) {
+    document.body.className = themeClass;
+  }
+
+  // ===== Clima (com cache local pra não ficar "Carregando..." toda hora) =====
+  const WEATHER_CACHE_KEY = 'tvWeatherCache';
+
+  function loadCachedWeather() {
+    const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+    if (!raw) return;
+    try {
+      const cached = JSON.parse(raw);
+      document.getElementById('weatherTemp').textContent = cached.temp;
+      document.getElementById('weatherCond').textContent = cached.cond;
+      document.getElementById('weatherIcon').textContent = cached.icon;
+    } catch {}
+  }
+
   async function fetchWeather() {
     try {
       const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current_weather=true');
@@ -876,16 +1162,22 @@
         else if (code >= 3 && code < 50) { icon = "☁️"; condText = "Nublado"; }
         else if (code >= 50) { icon = "🌧️"; condText = "Chuvoso"; }
 
-        document.getElementById('weatherTemp').textContent = `${temp}°C`;
+        const tempStr = `${temp}°C`;
+        document.getElementById('weatherTemp').textContent = tempStr;
         document.getElementById('weatherCond').textContent = condText;
         document.getElementById('weatherIcon').textContent = icon;
+
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ temp: tempStr, cond: condText, icon }));
       }
     } catch {
-      document.getElementById('weatherCond').textContent = "Clima indisponível";
+      // Se falhar e não houver nada em cache, só aí avisa que está indisponível
+      if (!localStorage.getItem(WEATHER_CACHE_KEY)) {
+        document.getElementById('weatherCond').textContent = "Clima indisponível";
+      }
     }
   }
 
-  // Descanso de tela
+  // ===== Descanso de tela =====
   function resetIdleTimer() {
     if (screensaver.classList.contains('active')) {
       dismissScreensaver();
@@ -901,7 +1193,7 @@
     resetIdleTimer();
   }
 
-  // Navegação Espacial via Controle e Ativação por Enter
+  // ===== Navegação Espacial via Controle e Ativação por Enter =====
   window.addEventListener('keydown', function(event) {
     resetIdleTimer();
     const active = document.activeElement;
@@ -993,14 +1285,14 @@
     if (h >= 5 && h < 12) greet = 'Bom dia, ';
     else if (h >= 12 && h < 18) greet = 'Boa tarde, ';
     
-    const userName = localStorage.getItem('tvUserName') || 'Mãe!';
+    const userName = getActiveProfile().name;
     document.getElementById('greeting').innerHTML = greet + '<span>' + userName + '</span>';
   }
 
-  const savedTheme = localStorage.getItem('tvTheme') || 'theme-warm';
-  applyTheme(savedTheme);
+  applyTheme(getActiveProfile().theme || 'theme-warm');
 
   updateClock();
+  loadCachedWeather();
   fetchWeather();
   setInterval(updateClock, 15000);
   setInterval(fetchWeather, 600000);
