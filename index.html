@@ -1521,17 +1521,18 @@
     }
   }
 
-  // Converte a imagem escolhida para base64 e salva no perfil, para não depender
-  // da URL do Pixabay (que expira) e para continuar funcionando offline depois.
+  // Converte a imagem escolhida para base64 e salva no perfil, agora otimizada 
+  // via <canvas> para comprimir e evitar estouro de memória na TV Box!
   async function selectPickedImage(hit) {
     const grid = document.getElementById('imagePickerGrid');
-    grid.innerHTML = '<div class="image-picker-status">Baixando imagem escolhida...</div>';
+    grid.innerHTML = '<div class="image-picker-status">Baixando e processando imagem escolhida...</div>';
 
     // Papel de parede usa a versão maior (até 1280px); ícone de perfil não precisa de tanto.
     const sourceUrl = imagePickerMode === 'avatar' ? hit.webformatURL : (hit.largeImageURL || hit.webformatURL);
 
     try {
-      const base64 = await urlToBase64(sourceUrl);
+      // Passa o modo 'avatar' como boolean para informar à função o quanto comprimir
+      const base64 = await urlToBase64(sourceUrl, imagePickerMode === 'avatar');
       if (imagePickerMode === 'avatar') {
         applyAvatar(base64);
       } else {
@@ -1540,22 +1541,62 @@
       playSound('click');
       closeImagePicker();
     } catch (err) {
-      grid.innerHTML = '<div class="image-picker-status">Não foi possível salvar essa imagem. Tente escolher outra foto.</div>';
+      grid.innerHTML = '<div class="image-picker-status">Não foi possível processar essa imagem. Tente escolher outra foto.</div>';
     }
   }
 
-  function urlToBase64(url) {
-    return fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error('Falha ao baixar imagem');
-        return res.blob();
-      })
-      .then(blob => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      }));
+  // FUNÇÃO REFEITA: Redimensionamento e compressão usando Canvas em memória
+  function urlToBase64(url, isAvatar = false) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      // Permite o processamento de imagens vindas do domínio do Pixabay pelo Canvas (CORS)
+      img.crossOrigin = 'Anonymous'; 
+      
+      img.onload = () => {
+        // Limites máximos definidos para evitar erros de limite de memória no localStorage
+        const maxW = isAvatar ? 300 : 1920;
+        const maxH = isAvatar ? 300 : 1080;
+        
+        let width = img.width;
+        let height = img.height;
+
+        // Mantém a proporção correta original (aspect ratio) sem distorcer
+        if (width > height) {
+          if (width > maxW) {
+            height = Math.round(height * (maxW / width));
+            width = maxW;
+          }
+        } else {
+          if (height > maxH) {
+            width = Math.round(width * (maxH / height));
+            height = maxH;
+          }
+        }
+
+        // Gera um canvas temporário e invisível para redesenhar a foto menor
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Exporte como JPEG comprimido (75% para fundos, 80% para avatares)
+        const quality = isAvatar ? 0.8 : 0.75;
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        
+        resolve(compressedBase64);
+      };
+
+      img.onerror = () => {
+        reject(new Error('Falha ao carregar a imagem para compressão.'));
+      };
+
+      img.src = url;
+    });
   }
 
   function applyAvatar(base64) {
