@@ -1055,7 +1055,6 @@
     gain.connect(audioCtx.destination);
 
     if (type === 'move') {
-      // Som de foco suave: seno filtrado, com entrada e saída graduais (sem "clique" de transiente)
       osc.type = 'sine';
       filter.frequency.value = 1400;
       osc.frequency.setValueAtTime(520, now);
@@ -1066,7 +1065,6 @@
       osc.start(now);
       osc.stop(now + 0.11);
     } else if (type === 'click') {
-      // Som de confirmação mais macio: triangular (em vez de quadrada) e filtrado, sem estourar
       osc.type = 'triangle';
       filter.frequency.value = 950;
       osc.frequency.setValueAtTime(300, now);
@@ -1163,7 +1161,6 @@
         launchApp(app);
       };
 
-      // Reordenar por arrastar (mouse/touch em navegadores comuns)
       a.addEventListener('dragstart', handleDragStart);
       a.addEventListener('dragover', handleDragOver);
       a.addEventListener('dragleave', handleDragLeave);
@@ -1221,7 +1218,6 @@
     dragSrcIndex = null;
   }
 
-  // Botões ◀▶ continuam funcionando (essenciais pra quem usa controle remoto)
   function moveApp(index, direction, event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1471,14 +1467,13 @@
     grid.className = 'image-grid';
     grid.innerHTML = '<div class="image-picker-status">Buscando fotos...</div>';
 
-    // Retrato para ícone de perfil, paisagem para papel de parede
     const orientation = imagePickerMode === 'avatar' ? 'vertical' : 'horizontal';
 
     try {
       const url = `https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&image_type=photo&safesearch=true&orientation=${orientation}&per_page=20`;
       const res = await fetch(url);
 
-      if (myToken !== imagePickerSearchToken) return; // uma busca mais nova já foi feita
+      if (myToken !== imagePickerSearchToken) return;
 
       if (res.status === 429) {
         grid.innerHTML = '<div class="image-picker-status">Muitas buscas em pouco tempo. Espere um minuto e tente de novo.</div>';
@@ -1521,87 +1516,100 @@
     }
   }
 
-  // Converte a imagem escolhida para base64 e salva no perfil, agora otimizada 
-  // via <canvas> para comprimir e evitar estouro de memória na TV Box!
+  // Converte a imagem escolhida para base64 e salva no perfil, comprimindo via <canvas>.
+  // IMPORTANTE: nem todo CDN libera CORS para leitura de pixels (canvas.toDataURL).
+  // Se o Pixabay não liberar isso, tentar ler o canvas lança SecurityError ("tainted canvas").
+  // Por isso essa função SEMPRE tenta o caminho comprimido primeiro, mas cai automaticamente
+  // para salvar a URL direta da imagem se a compressão falhar por qualquer motivo — assim a
+  // pessoa nunca vê um erro, só muda (silenciosamente) se a foto fica guardada localmente
+  // (comprimida) ou como link (carregada da internet toda vez que a TV abre).
   async function selectPickedImage(hit) {
     const grid = document.getElementById('imagePickerGrid');
-    grid.innerHTML = '<div class="image-picker-status">Baixando e processando imagem escolhida...</div>';
+    grid.innerHTML = '<div class="image-picker-status">Aplicando imagem escolhida...</div>';
 
-    // Papel de parede usa a versão maior (até 1280px); ícone de perfil não precisa de tanto.
     const sourceUrl = imagePickerMode === 'avatar' ? hit.webformatURL : (hit.largeImageURL || hit.webformatURL);
+    const isAvatar = imagePickerMode === 'avatar';
 
+    let finalValue;
     try {
-      // Passa o modo 'avatar' como boolean para informar à função o quanto comprimir
-      const base64 = await urlToBase64(sourceUrl, imagePickerMode === 'avatar');
-      if (imagePickerMode === 'avatar') {
-        applyAvatar(base64);
-      } else {
-        applyWallpaper(base64);
-      }
-      playSound('click');
-      closeImagePicker();
+      // Caminho principal: baixa, redimensiona e comprime via canvas (fica salvo localmente).
+      finalValue = await urlToBase64(sourceUrl, isAvatar);
     } catch (err) {
-      grid.innerHTML = '<div class="image-picker-status">Não foi possível processar essa imagem. Tente escolher outra foto.</div>';
+      // Fallback: se o canvas não puder ser lido (CORS) ou a imagem não carregar por
+      // qualquer outro motivo, usa a própria URL da imagem em vez de desistir.
+      console.warn('Não foi possível comprimir a imagem localmente, usando a URL direta:', err);
+      finalValue = sourceUrl;
     }
+
+    if (isAvatar) {
+      applyAvatar(finalValue);
+    } else {
+      applyWallpaper(finalValue);
+    }
+    playSound('click');
+    closeImagePicker();
   }
 
-  // FUNÇÃO REFEITA: Redimensionamento e compressão usando Canvas em memória
+  // Redimensiona e comprime a imagem via <canvas> em memória.
+  // Rejeita a Promise (sem nunca lançar erro não tratado) se a imagem não carregar
+  // OU se o canvas ficar "tainted" (CORS bloqueado) e toDataURL() falhar.
   function urlToBase64(url, isAvatar = false) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      // Permite o processamento de imagens vindas do domínio do Pixabay pelo Canvas (CORS)
-      img.crossOrigin = 'Anonymous'; 
-      
+      img.crossOrigin = 'Anonymous';
+
       img.onload = () => {
-        // Limites máximos definidos para evitar erros de limite de memória no localStorage
-        const maxW = isAvatar ? 300 : 1920;
-        const maxH = isAvatar ? 300 : 1080;
-        
-        let width = img.width;
-        let height = img.height;
+        try {
+          const maxW = isAvatar ? 300 : 1920;
+          const maxH = isAvatar ? 300 : 1080;
 
-        // Mantém a proporção correta original (aspect ratio) sem distorcer
-        if (width > height) {
-          if (width > maxW) {
-            height = Math.round(height * (maxW / width));
-            width = maxW;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxW) {
+              height = Math.round(height * (maxW / width));
+              width = maxW;
+            }
+          } else {
+            if (height > maxH) {
+              width = Math.round(width * (maxH / height));
+              height = maxH;
+            }
           }
-        } else {
-          if (height > maxH) {
-            width = Math.round(width * (maxH / height));
-            height = maxH;
-          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const quality = isAvatar ? 0.8 : 0.75;
+          // Este é o ponto exato que lança SecurityError se o canvas estiver "tainted"
+          // (CDN de origem não liberou CORS). Por isso está dentro do try/catch daqui
+          // dentro, e não só no onload — sem isso, o erro de segurança escaparia como
+          // uma exceção síncrona não capturada pela Promise.
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        } catch (canvasErr) {
+          reject(canvasErr);
         }
-
-        // Gera um canvas temporário e invisível para redesenhar a foto menor
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Exporte como JPEG comprimido (75% para fundos, 80% para avatares)
-        const quality = isAvatar ? 0.8 : 0.75;
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-        
-        resolve(compressedBase64);
       };
 
       img.onerror = () => {
-        reject(new Error('Falha ao carregar a imagem para compressão.'));
+        reject(new Error('Falha ao carregar a imagem.'));
       };
 
       img.src = url;
     });
   }
 
-  function applyAvatar(base64) {
+  function applyAvatar(value) {
     const profile = getActiveProfile();
-    profile.avatar = base64;
+    profile.avatar = value;
     saveProfilesData(profilesData);
     refreshAvatarUI();
   }
@@ -1614,9 +1622,9 @@
     refreshAvatarUI();
   }
 
-  function applyWallpaper(base64) {
+  function applyWallpaper(value) {
     const profile = getActiveProfile();
-    profile.wallpaper = base64;
+    profile.wallpaper = value;
     saveProfilesData(profilesData);
     refreshWallpaperUI();
   }
@@ -1629,7 +1637,9 @@
     refreshWallpaperUI();
   }
 
-  // Atualiza tudo relacionado ao avatar: preview nas Configurações + avatar acima da saudação
+  // Atualiza tudo relacionado ao avatar: preview nas Configurações + avatar acima da saudação.
+  // O <img> da saudação tem onerror próprio (definido aqui) para o caso raro do fallback de
+  // URL direta parar de funcionar depois (link expirado, Pixabay fora do ar etc).
   function refreshAvatarUI() {
     const profile = getActiveProfile();
     const previewSwatch = document.getElementById('avatarPreviewSwatch');
@@ -1641,6 +1651,10 @@
       previewSwatch.textContent = '';
       previewSwatch.classList.remove('empty');
       removeBtn.style.display = 'block';
+      greetingAvatar.onerror = () => {
+        greetingAvatar.classList.remove('active');
+        greetingAvatar.removeAttribute('src');
+      };
       greetingAvatar.src = profile.avatar;
       greetingAvatar.classList.add('active');
     } else {
@@ -1653,7 +1667,10 @@
     }
   }
 
-  // Atualiza tudo relacionado ao papel de parede: preview nas Configurações + fundo real da tela
+  // Atualiza tudo relacionado ao papel de parede: preview nas Configurações + fundo real da tela.
+  // background-image não tem onerror nativo; se o link do fallback quebrar, o pior caso é o
+  // papel de parede não aparecer (o véu escuro e o gradiente original continuam garantindo
+  // que a tela nunca fica ilegível).
   function refreshWallpaperUI() {
     const profile = getActiveProfile();
     const previewSwatch = document.getElementById('wallpaperPreviewSwatch');
@@ -1824,8 +1841,11 @@
     const profile = getActiveProfile();
     document.getElementById('userNameInput').value = profile.name;
     document.getElementById('themeSelect').value = profile.theme;
+    document.getElementById('pixabayKeyInput').value = getPixabayKey();
     document.getElementById('profilePinInput').value = profile.pin || '';
     document.getElementById('soundToggle').checked = localStorage.getItem('tvSoundEnabled') !== 'false';
+    refreshAvatarUI();
+    refreshWallpaperUI();
 
     settingsModal.style.display = 'flex';
     document.getElementById('userNameInput').focus();
@@ -1852,6 +1872,9 @@
     profile.pin = pinVal;
     saveProfilesData(profilesData);
 
+    const pixabayKeyVal = document.getElementById('pixabayKeyInput').value.trim();
+    localStorage.setItem(PIXABAY_KEY_KEY, pixabayKeyVal);
+
     const soundOn = document.getElementById('soundToggle').checked;
     localStorage.setItem('tvSoundEnabled', soundOn ? 'true' : 'false');
 
@@ -1862,7 +1885,7 @@
   }
 
   function applyTheme(themeClass) {
-    document.body.className = themeClass;
+    document.body.className = themeClass + (getActiveProfile().wallpaper ? ' has-wallpaper' : '');
   }
 
   // ===== Clima (com cache local pra não ficar "Carregando..." toda hora) =====
@@ -1901,7 +1924,6 @@
         localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ temp: tempStr, cond: condText, icon }));
       }
     } catch {
-      // Se falhar e não houver nada em cache, só aí avisa que está indisponível
       if (!localStorage.getItem(WEATHER_CACHE_KEY)) {
         document.getElementById('weatherCond').textContent = "Clima indisponível";
       }
@@ -1930,10 +1952,12 @@
     const active = document.activeElement;
     const pinModal = document.getElementById('pinModalOverlay');
     const isPinModalOpen = pinModal.style.display === 'flex';
-    const isModalOpen = modal.style.display === 'flex' || settingsModal.style.display === 'flex' || isPinModalOpen;
+    const isImagePickerOpen = document.getElementById('imagePickerModalOverlay').style.display === 'flex';
+    const isModalOpen = modal.style.display === 'flex' || settingsModal.style.display === 'flex' || isPinModalOpen || isImagePickerOpen;
 
     if (event.key === "Escape" || event.key === "Back" || event.keyCode === 10009 || event.keyCode === 461) {
       if (isPinModalOpen) { cancelPinPrompt(); return; }
+      if (isImagePickerOpen) { closeImagePicker(); return; }
       if (modal.style.display === 'flex') closeModal();
       if (settingsModal.style.display === 'flex') closeSettingsModal();
       return;
@@ -1997,6 +2021,7 @@
     if (event.target === modal) closeModal(); 
     if (event.target === settingsModal) closeSettingsModal();
     if (event.target === document.getElementById('pinModalOverlay')) cancelPinPrompt();
+    if (event.target === document.getElementById('imagePickerModalOverlay')) closeImagePicker();
   }
   window.onmousemove = resetIdleTimer;
 
@@ -2025,6 +2050,8 @@
   }
 
   applyTheme(getActiveProfile().theme || 'theme-warm');
+  refreshAvatarUI();
+  refreshWallpaperUI();
 
   updateClock();
   loadCachedWeather();
