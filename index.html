@@ -95,13 +95,16 @@
     position: fixed;
     inset: 0;
     z-index: -1;
+    background-color: var(--bg-deep);
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     opacity: 0;
     transition: opacity 0.6s ease;
     pointer-events: none;
   }
   #wallpaperLayer.active { opacity: 1; }
+  
   #wallpaperVeil {
     position: fixed;
     inset: 0;
@@ -126,8 +129,6 @@
     z-index: 0;
     transition: background 0.4s ease, opacity 0.4s ease;
   }
-  /* Com papel de parede ativo, o glow original (pensado para o gradiente liso)
-     fica mais discreto para não brigar visualmente com a foto de fundo. */
   body.has-wallpaper .glow { opacity: 0.35; }
 
   .settings-btn {
@@ -421,7 +422,6 @@
     letter-spacing: 0.5px;
   }
 
-  /* Tela de Transição Fullscreen de Carregamento */
   #launchScreen {
     position: fixed;
     inset: 0;
@@ -607,7 +607,6 @@
     margin: 8px 0 20px 0;
   }
 
-  /* ===== Escolha de papel de parede / ícone de perfil (Pixabay) ===== */
   .picker-preview-row {
     display: flex;
     align-items: center;
@@ -663,8 +662,8 @@
 
   #imagePickerModalOverlay .modal,
   #wallpaperPickerModalOverlay .modal {
-    width: 640px;
-    max-width: 92vw;
+    width: 680px;
+    max-width: 94vw;
   }
 
   .image-source-tabs {
@@ -799,7 +798,6 @@
   }
   .api-key-hint a { color: var(--accent-highlight); }
 
-  /* Modo Descanso / Screensaver */
   #screensaver {
     position: fixed;
     inset: 0;
@@ -928,15 +926,19 @@
         </div>
       </div>
 
-      <label for="pexelsKeyInput">Chave da API do Pexels (recomendado — fotos de melhor qualidade):</label>
+      <label for="pexelsKeyInput">Chave da API do Pexels:</label>
       <input type="password" id="pexelsKeyInput" placeholder="Cole sua chave aqui">
-      <div class="api-key-hint">Grátis e sem validade. Pegue a sua em <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> (precisa criar uma conta gratuita).</div>
+      <div class="api-key-hint">Grátis em <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> (excelente para fotografia artística).</div>
 
-      <label for="pixabayKeyInput">Chave da API do Pixabay (fonte alternativa, opcional):</label>
+      <label for="unsplashKeyInput">Chave da API do Unsplash (Access Key):</label>
+      <input type="password" id="unsplashKeyInput" placeholder="Cole sua Access Key aqui">
+      <div class="api-key-hint">Grátis em <a href="https://unsplash.com/developers" target="_blank" rel="noopener">unsplash.com/developers</a> (considerada uma das melhores coleções de fotos do mundo).</div>
+
+      <label for="pixabayKeyInput">Chave da API do Pixabay:</label>
       <input type="password" id="pixabayKeyInput" placeholder="Cole sua chave aqui">
-      <div class="api-key-hint">Grátis e sem validade. Pegue a sua em <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (precisa criar uma conta gratuita).</div>
+      <div class="api-key-hint">Grátis em <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a>.</div>
 
-      <label for="profilePinInput">PIN deste perfil (opcional, 4 dígitos — protege as configurações e apps marcados):</label>
+      <label for="profilePinInput">PIN deste perfil (4 dígitos — opcional):</label>
       <input type="password" id="profilePinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="Deixe em branco para não usar PIN">
 
       <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:18px;">
@@ -969,13 +971,14 @@
 
       <div class="image-source-tabs">
         <button type="button" class="image-source-tab" id="sourceTabPexels" onclick="switchImageSource('pexels')">Pexels</button>
+        <button type="button" class="image-source-tab" id="sourceTabUnsplash" onclick="switchImageSource('unsplash')">Unsplash</button>
         <button type="button" class="image-source-tab" id="sourceTabPixabay" onclick="switchImageSource('pixabay')">Pixabay</button>
-        <button type="button" class="image-source-tab" id="sourceTabUpload" onclick="switchImageSource('upload')">📁 Do dispositivo</button>
+        <button type="button" class="image-source-tab" id="sourceTabUpload" onclick="switchImageSource('upload')">📁 Dispositivo</button>
       </div>
 
       <div id="searchSourceUI">
         <div class="image-search-row">
-          <input type="text" id="imagePickerQuery" placeholder="Ex: praia, montanha, gatos...">
+          <input type="text" id="imagePickerQuery" placeholder="Ex: praias, paisagens, filmes, cyberpunk...">
           <button type="button" id="imagePickerSearchBtn" onclick="runImageSearch()">Buscar</button>
         </div>
         <div class="pixabay-credit" id="sourceCredit">Fotos via <a href="https://pexels.com" target="_blank" rel="noopener">Pexels</a></div>
@@ -987,7 +990,7 @@
       <div id="uploadSourceUI" style="display:none;">
         <label class="upload-drop-zone" for="imageUploadInput" tabindex="0">
           <span class="updz-icon">📁</span>
-          Toque para escolher uma foto do seu dispositivo<br>(JPG ou PNG)
+          Toque para escolher uma foto do seu dispositivo<br>(JPG, PNG ou WEBP)
         </label>
         <input type="file" id="imageUploadInput" accept="image/png, image/jpeg, image/jpg, image/webp" style="display:none;" onchange="handleImageUpload(event)">
         <div id="uploadStatus" style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:12px; min-height:16px;"></div>
@@ -1019,7 +1022,6 @@
   </div>
 
 <script>
-  // ===== Dados padrão de apps (usados para novos perfis / migração) =====
   const defaultAppsList = [
     { name: "Netflix",     url: "https://www.netflix.com",        initial: "N", grad: ["#C11119", "#7A0A10"], isDefault: true },
     { name: "YouTube",     url: "https://www.youtube.com",        initial: "▶", grad: ["#E8342A", "#8E1A14"], isDefault: true },
@@ -1035,9 +1037,7 @@
     ["#be185d", "#831843"]
   ];
 
-  // ===== Perfis (nome, tema e atalhos separados por pessoa) =====
   const PROFILES_KEY = 'tvProfilesData';
-  // Chaves antigas, usadas só para migrar dados de uma versão sem perfis
   const LEGACY_APPS_KEY = 'tvAppsLayout';
   const LEGACY_NAME_KEY = 'tvUserName';
   const LEGACY_THEME_KEY = 'tvTheme';
@@ -1048,7 +1048,6 @@
       try { return JSON.parse(raw); } catch {}
     }
 
-    // Migração: se já existia um layout salvo no formato antigo, aproveita ele
     let legacyApps = null;
     try {
       const legacyRaw = localStorage.getItem(LEGACY_APPS_KEY);
@@ -1060,7 +1059,7 @@
       activeProfileId: 'p1',
       profiles: {
         p1: {
-          name: localStorage.getItem(LEGACY_NAME_KEY) || 'Mãe!',
+          name: localStorage.getItem(LEGACY_NAME_KEY) || 'Usuário',
           theme: localStorage.getItem(LEGACY_THEME_KEY) || 'theme-warm',
           apps: legacyApps
         }
@@ -1099,14 +1098,13 @@
   const IDLE_TIME_LIMIT = 120000;
   let dragSrcIndex = null;
 
-  // ===== Estado do seletor de imagens (Pexels / Pixabay / Upload) =====
-  const PEXELS_KEY_KEY = 'tvPexelsApiKey';   // chave da API do Pexels, salva globalmente (não é por perfil)
-  const PIXABAY_KEY_KEY = 'tvPixabayApiKey'; // chave da API do Pixabay, salva globalmente (não é por perfil)
-  let imagePickerMode = null; // 'avatar' | 'wallpaper'
-  let imageSourceActive = 'pexels'; // 'pexels' | 'pixabay' | 'upload'
-  let imagePickerSearchToken = 0; // evita que uma busca antiga sobrescreva uma mais recente
+  const PEXELS_KEY_KEY = 'tvPexelsApiKey';
+  const UNSPLASH_KEY_KEY = 'tvUnsplashApiKey';
+  const PIXABAY_KEY_KEY = 'tvPixabayApiKey';
+  let imagePickerMode = null;
+  let imageSourceActive = 'pexels';
+  let imagePickerSearchToken = 0;
 
-  // Web Audio API para sons refinados
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   
   function playSound(type) {
@@ -1252,7 +1250,6 @@
     tilesEl.appendChild(addBtn);
   }
 
-  // ===== Drag-and-drop =====
   function handleDragStart(e) {
     dragSrcIndex = parseInt(this.dataset.index);
     this.classList.add('dragging');
@@ -1307,7 +1304,6 @@
     }
   }
 
-  // ===== Modal Adicionar/Editar app =====
   function renderColorSwatches(selectedGrad) {
     const container = document.getElementById('colorSwatches');
     container.innerHTML = '';
@@ -1437,7 +1433,6 @@
     }
   }
 
-  // ===== Prompt de PIN reutilizável =====
   let pinPromptCallback = null;
   let pinPromptCancelCallback = null;
   let pinPromptTarget = null;
@@ -1483,10 +1478,11 @@
     if (e.key === 'Enter') submitPinPrompt();
   });
 
-  // ===== Seletor de imagens (Pixabay): papel de parede e ícone de perfil =====
-
   function getPexelsKey() {
     return (localStorage.getItem(PEXELS_KEY_KEY) || '').trim();
+  }
+  function getUnsplashKey() {
+    return (localStorage.getItem(UNSPLASH_KEY_KEY) || '').trim();
   }
   function getPixabayKey() {
     return (localStorage.getItem(PIXABAY_KEY_KEY) || '').trim();
@@ -1500,9 +1496,7 @@
     document.getElementById('uploadStatus').textContent = '';
     document.getElementById('imageUploadInput').value = '';
 
-    // Abre já na primeira fonte que tiver chave configurada; se nenhuma tiver, abre em Pexels
-    // mesmo assim (mostrando o aviso de chave faltando) porque é a fonte recomendada.
-    const startSource = getPexelsKey() ? 'pexels' : (getPixabayKey() ? 'pixabay' : 'pexels');
+    const startSource = getPexelsKey() ? 'pexels' : (getUnsplashKey() ? 'unsplash' : (getPixabayKey() ? 'pixabay' : 'pexels'));
     switchImageSource(startSource);
 
     document.getElementById('imagePickerModalOverlay').style.display = 'flex';
@@ -1523,6 +1517,7 @@
     imageSourceActive = source;
 
     document.getElementById('sourceTabPexels').classList.toggle('active', source === 'pexels');
+    document.getElementById('sourceTabUnsplash').classList.toggle('active', source === 'unsplash');
     document.getElementById('sourceTabPixabay').classList.toggle('active', source === 'pixabay');
     document.getElementById('sourceTabUpload').classList.toggle('active', source === 'upload');
 
@@ -1539,7 +1534,14 @@
     if (source === 'pexels') {
       credit.innerHTML = 'Fotos via <a href="https://pexels.com" target="_blank" rel="noopener">Pexels</a>';
       if (!getPexelsKey()) {
-        grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pexels configurada.<br>Feche esta janela, cole sua chave no campo "Chave da API do Pexels" nas Configurações e tente de novo.<br><br>É grátis — veja o link nas Configurações.</div>';
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pexels configurada.<br>Feche esta janela, cole sua chave nas Configurações e tente de novo.</div>';
+      } else {
+        grid.innerHTML = '<div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>';
+      }
+    } else if (source === 'unsplash') {
+      credit.innerHTML = 'Fotos via <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>';
+      if (!getUnsplashKey()) {
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma Access Key do Unsplash configurada.<br>Cole sua chave gratuita nas Configurações para desbloquear ótimas paisagens e artes.</div>';
       } else {
         grid.innerHTML = '<div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>';
       }
@@ -1560,6 +1562,7 @@
 
   async function runImageSearch() {
     if (imageSourceActive === 'pexels') return runPexelsSearch();
+    if (imageSourceActive === 'unsplash') return runUnsplashSearch();
     return runPixabaySearch();
   }
 
@@ -1573,7 +1576,7 @@
       return;
     }
     if (!query) {
-      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar (ex: praia, montanha, gatos...).</div>';
+      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar (ex: praias, paisagens, filmes...).</div>';
       return;
     }
 
@@ -1582,10 +1585,8 @@
     const searchBtn = document.getElementById('imagePickerSearchBtn');
     searchBtn.disabled = true;
     grid.className = 'image-grid';
-    grid.innerHTML = '<div class="image-picker-status">Buscando fotos...</div>';
+    grid.innerHTML = '<div class="image-picker-status">Buscando fotos no Pexels...</div>';
 
-    // A Pexels não filtra por orientação vertical/horizontal via parâmetro dedicado como o
-    // Pixabay, mas aceita "orientation" com os mesmos valores em inglês.
     const orientation = imagePickerMode === 'avatar' ? 'portrait' : 'landscape';
 
     try {
@@ -1621,11 +1622,12 @@
         item.className = 'image-grid-item' + (imagePickerMode === 'avatar' ? ' avatar-mode' : '');
         item.tabIndex = 0;
         item.title = `Foto de ${photo.photographer || 'desconhecido'} — toque para selecionar`;
-        item.innerHTML = `<img src="${photo.src.medium}" alt="${(photo.alt || '').replace(/"/g, '')}" loading="lazy">`;
+        item.innerHTML = `<img src="${photo.src.medium}" alt="" loading="lazy">`;
         const choose = () => selectPickedImage({
           source: 'pexels',
           previewURL: photo.src.medium,
-          downloadURL: imagePickerMode === 'avatar' ? (photo.src.portrait || photo.src.large) : (photo.src.large2x || photo.src.large)
+          // Utilizamos .large que carrega mais leve e seguro na TV sem bloquear
+          downloadURL: imagePickerMode === 'avatar' ? (photo.src.portrait || photo.src.large) : (photo.src.large || photo.src.medium)
         });
         item.onclick = choose;
         item.onkeydown = (e) => { if (e.key === 'Enter') choose(); };
@@ -1634,6 +1636,83 @@
     } catch (err) {
       if (myToken !== imagePickerSearchToken) return;
       grid.innerHTML = '<div class="image-picker-status">Sem conexão com a internet no momento. Tente novamente.</div>';
+    } finally {
+      if (myToken === imagePickerSearchToken) searchBtn.disabled = false;
+    }
+  }
+
+  async function runUnsplashSearch() {
+    const key = getUnsplashKey();
+    const grid = document.getElementById('imagePickerGrid');
+    const query = document.getElementById('imagePickerQuery').value.trim();
+
+    if (!key) {
+      grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma Access Key do Unsplash configurada.<br>Feche esta janela, cole sua chave nas Configurações e tente de novo.</div>';
+      return;
+    }
+    if (!query) {
+      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar (ex: paisagens, arquitetura, jogos...).</div>';
+      return;
+    }
+
+    playSound('click');
+    const myToken = ++imagePickerSearchToken;
+    const searchBtn = document.getElementById('imagePickerSearchBtn');
+    searchBtn.disabled = true;
+    grid.className = 'image-grid';
+    grid.innerHTML = '<div class="image-picker-status">Buscando fotos no Unsplash...</div>';
+
+    const orientation = imagePickerMode === 'avatar' ? 'portrait' : 'landscape';
+
+    try {
+      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=20`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Client-ID ${key}` }
+      });
+
+      if (myToken !== imagePickerSearchToken) return;
+
+      if (res.status === 429) {
+        grid.innerHTML = '<div class="image-picker-status">Muitas buscas em pouco tempo no Unsplash. Aguarde 1 minuto.</div>';
+        return;
+      }
+      if (res.status === 401 || res.status === 403) {
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Access Key do Unsplash inválida. Confira nas Configurações.</div>';
+        return;
+      }
+      if (!res.ok) {
+        grid.innerHTML = '<div class="image-picker-status">Erro na busca do Unsplash. Tente novamente mais tarde.</div>';
+        return;
+      }
+
+      const data = await res.json();
+      if (myToken !== imagePickerSearchToken) return;
+
+      if (!data.results || data.results.length === 0) {
+        grid.innerHTML = '<div class="image-picker-status">Nenhuma foto encontrada no Unsplash. Tente outro tema.</div>';
+        return;
+      }
+
+      grid.innerHTML = '';
+      data.results.forEach(photo => {
+        const item = document.createElement('div');
+        item.className = 'image-grid-item' + (imagePickerMode === 'avatar' ? ' avatar-mode' : '');
+        item.tabIndex = 0;
+        item.title = `Foto de ${photo.user ? photo.user.name : 'Unsplash'} — toque para selecionar`;
+        item.innerHTML = `<img src="${photo.urls.small}" alt="" loading="lazy">`;
+        const choose = () => selectPickedImage({
+          source: 'unsplash',
+          previewURL: photo.urls.small,
+          // O link regular (com largura ~1080px) fica incrível nas telas sem estourar
+          downloadURL: photo.urls.regular || photo.urls.full
+        });
+        item.onclick = choose;
+        item.onkeydown = (e) => { if (e.key === 'Enter') choose(); };
+        grid.appendChild(item);
+      });
+    } catch (err) {
+      if (myToken !== imagePickerSearchToken) return;
+      grid.innerHTML = '<div class="image-picker-status">Falha de rede ao conectar com Unsplash. Tente novamente.</div>';
     } finally {
       if (myToken === imagePickerSearchToken) searchBtn.disabled = false;
     }
@@ -1649,7 +1728,7 @@
       return;
     }
     if (!query) {
-      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar (ex: praia, montanha, gatos...).</div>';
+      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar.</div>';
       return;
     }
 
@@ -1658,7 +1737,7 @@
     const searchBtn = document.getElementById('imagePickerSearchBtn');
     searchBtn.disabled = true;
     grid.className = 'image-grid';
-    grid.innerHTML = '<div class="image-picker-status">Buscando fotos...</div>';
+    grid.innerHTML = '<div class="image-picker-status">Buscando fotos no Pixabay...</div>';
 
     const orientation = imagePickerMode === 'avatar' ? 'vertical' : 'horizontal';
 
@@ -1695,7 +1774,7 @@
         item.className = 'image-grid-item' + (imagePickerMode === 'avatar' ? ' avatar-mode' : '');
         item.tabIndex = 0;
         item.title = 'Selecionar esta foto';
-        item.innerHTML = `<img src="${hit.webformatURL}" alt="${(hit.tags || '').replace(/"/g, '')}" loading="lazy">`;
+        item.innerHTML = `<img src="${hit.webformatURL}" alt="" loading="lazy">`;
         const choose = () => selectPickedImage({
           source: 'pixabay',
           previewURL: hit.webformatURL,
@@ -1713,9 +1792,6 @@
     }
   }
 
-  // ===== Upload de imagem do próprio dispositivo =====
-  // Arquivo local nunca tem problema de CORS (não vem de outro domínio), então esse caminho
-  // sempre consegue comprimir via canvas — é o mais confiável dos três.
   function handleImageUpload(event) {
     const file = event.target.files && event.target.files[0];
     const status = document.getElementById('uploadStatus');
@@ -1725,7 +1801,6 @@
       status.textContent = 'Esse arquivo não é uma imagem. Escolha um JPG, PNG ou WEBP.';
       return;
     }
-    // Limite de segurança generoso; a compressão via canvas reduz bastante de qualquer forma.
     if (file.size > 20 * 1024 * 1024) {
       status.textContent = 'Essa imagem é muito grande (máx. 20MB). Tente outra.';
       return;
@@ -1744,8 +1819,6 @@
         playSound('click');
         closeImagePicker();
       } catch (err) {
-        // Arquivo local lido como data: URL nunca deveria cair aqui (sem CORS possível),
-        // mas mantém o aviso por segurança caso o arquivo esteja corrompido/formato inválido.
         status.textContent = 'Não foi possível processar essa imagem. Tente outro arquivo.';
       }
     };
@@ -1755,13 +1828,8 @@
     reader.readAsDataURL(file);
   }
 
-  // Converte a imagem escolhida para base64 e salva no perfil, comprimindo via <canvas>.
-  // IMPORTANTE: nem todo CDN libera CORS para leitura de pixels (canvas.toDataURL).
-  // Se o Pixabay não liberar isso, tentar ler o canvas lança SecurityError ("tainted canvas").
-  // Por isso essa função SEMPRE tenta o caminho comprimido primeiro, mas cai automaticamente
-  // para salvar a URL direta da imagem se a compressão falhar por qualquer motivo — assim a
-  // pessoa nunca vê um erro, só muda (silenciosamente) se a foto fica guardada localmente
-  // (comprimida) ou como link (carregada da internet toda vez que a TV abre).
+  // AQUI ESTÁ O TRUQUE: Para Pexels, Unsplash e Pixabay, usamos a URL direta!
+  // Isso evita erros de CORS no canvas do navegador E evita estourar os 5 MB do localStorage.
   async function selectPickedImage(pickedImage) {
     const grid = document.getElementById('imagePickerGrid');
     grid.innerHTML = '<div class="image-picker-status">Aplicando imagem escolhida...</div>';
@@ -1769,33 +1837,22 @@
     const sourceUrl = pickedImage.downloadURL;
     const isAvatar = imagePickerMode === 'avatar';
 
-    let finalValue;
-    try {
-      // Caminho principal: baixa, redimensiona e comprime via canvas (fica salvo localmente).
-      finalValue = await urlToBase64(sourceUrl, isAvatar);
-    } catch (err) {
-      // Fallback: se o canvas não puder ser lido (CORS) ou a imagem não carregar por
-      // qualquer outro motivo, usa a própria URL da imagem em vez de desistir.
-      console.warn('Não foi possível comprimir a imagem localmente, usando a URL direta:', err);
-      finalValue = sourceUrl;
-    }
-
     if (isAvatar) {
-      applyAvatar(finalValue);
+      applyAvatar(sourceUrl);
     } else {
-      applyWallpaper(finalValue);
+      applyWallpaper(sourceUrl);
     }
     playSound('click');
     closeImagePicker();
   }
 
-  // Redimensiona e comprime a imagem via <canvas> em memória.
-  // Rejeita a Promise (sem nunca lançar erro não tratado) se a imagem não carregar
-  // OU se o canvas ficar "tainted" (CORS bloqueado) e toDataURL() falhar.
   function urlToBase64(url, isAvatar = false) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'Anonymous';
+      // Apenas ative o crossOrigin para URLs da internet, nunca para arquivos data: base64 locais
+      if (!url.startsWith('data:')) {
+        img.crossOrigin = 'Anonymous';
+      }
 
       img.onload = () => {
         try {
@@ -1827,10 +1884,6 @@
           ctx.drawImage(img, 0, 0, width, height);
 
           const quality = isAvatar ? 0.8 : 0.75;
-          // Este é o ponto exato que lança SecurityError se o canvas estiver "tainted"
-          // (CDN de origem não liberou CORS). Por isso está dentro do try/catch daqui
-          // dentro, e não só no onload — sem isso, o erro de segurança escaparia como
-          // uma exceção síncrona não capturada pela Promise.
           const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
           resolve(compressedBase64);
         } catch (canvasErr) {
@@ -1876,9 +1929,6 @@
     refreshWallpaperUI();
   }
 
-  // Atualiza tudo relacionado ao avatar: preview nas Configurações + avatar acima da saudação.
-  // O <img> da saudação tem onerror próprio (definido aqui) para o caso raro do fallback de
-  // URL direta parar de funcionar depois (link expirado, Pixabay fora do ar etc).
   function refreshAvatarUI() {
     const profile = getActiveProfile();
     const previewSwatch = document.getElementById('avatarPreviewSwatch');
@@ -1906,10 +1956,6 @@
     }
   }
 
-  // Atualiza tudo relacionado ao papel de parede: preview nas Configurações + fundo real da tela.
-  // background-image não tem onerror nativo; se o link do fallback quebrar, o pior caso é o
-  // papel de parede não aparecer (o véu escuro e o gradiente original continuam garantindo
-  // que a tela nunca fica ilegível).
   function refreshWallpaperUI() {
     const profile = getActiveProfile();
     const previewSwatch = document.getElementById('wallpaperPreviewSwatch');
@@ -1937,7 +1983,6 @@
     }
   }
 
-  // ===== Transição suave entre perfis =====
   function withProfileTransition(fn) {
     const overlay = document.getElementById('profileTransition');
     overlay.classList.add('active');
@@ -1947,7 +1992,6 @@
     }, 220);
   }
 
-  // ===== Modal de Configurações / Perfis =====
   function populateProfileSelect() {
     const sel = document.getElementById('profileSelect');
     sel.innerHTML = '';
@@ -2081,6 +2125,7 @@
     document.getElementById('userNameInput').value = profile.name;
     document.getElementById('themeSelect').value = profile.theme;
     document.getElementById('pexelsKeyInput').value = getPexelsKey();
+    document.getElementById('unsplashKeyInput').value = getUnsplashKey();
     document.getElementById('pixabayKeyInput').value = getPixabayKey();
     document.getElementById('profilePinInput').value = profile.pin || '';
     document.getElementById('soundToggle').checked = localStorage.getItem('tvSoundEnabled') !== 'false';
@@ -2115,6 +2160,9 @@
     const pexelsKeyVal = document.getElementById('pexelsKeyInput').value.trim();
     localStorage.setItem(PEXELS_KEY_KEY, pexelsKeyVal);
 
+    const unsplashKeyVal = document.getElementById('unsplashKeyInput').value.trim();
+    localStorage.setItem(UNSPLASH_KEY_KEY, unsplashKeyVal);
+
     const pixabayKeyVal = document.getElementById('pixabayKeyInput').value.trim();
     localStorage.setItem(PIXABAY_KEY_KEY, pixabayKeyVal);
 
@@ -2131,7 +2179,6 @@
     document.body.className = themeClass + (getActiveProfile().wallpaper ? ' has-wallpaper' : '');
   }
 
-  // ===== Clima (com cache local pra não ficar "Carregando..." toda hora) =====
   const WEATHER_CACHE_KEY = 'tvWeatherCache';
 
   function loadCachedWeather() {
@@ -2173,7 +2220,6 @@
     }
   }
 
-  // ===== Descanso de tela =====
   function resetIdleTimer() {
     if (screensaver.classList.contains('active')) {
       dismissScreensaver();
@@ -2189,7 +2235,6 @@
     resetIdleTimer();
   }
 
-  // ===== Navegação Espacial via Controle e Ativação por Enter =====
   window.addEventListener('keydown', function(event) {
     resetIdleTimer();
     const active = document.activeElement;
