@@ -667,6 +667,53 @@
     max-width: 92vw;
   }
 
+  .image-source-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .image-source-tab {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .image-source-tab:hover, .image-source-tab:focus-visible {
+    background: rgba(255,255,255,0.1);
+    outline: none;
+  }
+  .image-source-tab.active {
+    background: var(--accent-highlight);
+    border-color: var(--accent-highlight);
+    color: white;
+  }
+
+  .upload-drop-zone {
+    border: 2px dashed rgba(255,255,255,0.25);
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .upload-drop-zone:hover, .upload-drop-zone:focus-visible {
+    border-color: var(--accent-highlight);
+    background: rgba(255,255,255,0.04);
+    outline: none;
+  }
+  .upload-drop-zone .updz-icon { font-size: 34px; margin-bottom: 10px; display: block; }
+
   .image-search-row {
     display: flex;
     gap: 10px;
@@ -881,7 +928,11 @@
         </div>
       </div>
 
-      <label for="pixabayKeyInput">Chave da API do Pixabay (para buscar fotos):</label>
+      <label for="pexelsKeyInput">Chave da API do Pexels (recomendado — fotos de melhor qualidade):</label>
+      <input type="password" id="pexelsKeyInput" placeholder="Cole sua chave aqui">
+      <div class="api-key-hint">Grátis e sem validade. Pegue a sua em <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> (precisa criar uma conta gratuita).</div>
+
+      <label for="pixabayKeyInput">Chave da API do Pixabay (fonte alternativa, opcional):</label>
       <input type="password" id="pixabayKeyInput" placeholder="Cole sua chave aqui">
       <div class="api-key-hint">Grátis e sem validade. Pegue a sua em <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (precisa criar uma conta gratuita).</div>
 
@@ -915,14 +966,33 @@
   <div class="modal-overlay" id="imagePickerModalOverlay">
     <div class="modal">
       <h2 id="imagePickerTitle">🖼️ Escolher imagem</h2>
-      <div class="image-search-row">
-        <input type="text" id="imagePickerQuery" placeholder="Ex: praia, montanha, gatos...">
-        <button type="button" id="imagePickerSearchBtn" onclick="runImageSearch()">Buscar</button>
+
+      <div class="image-source-tabs">
+        <button type="button" class="image-source-tab" id="sourceTabPexels" onclick="switchImageSource('pexels')">Pexels</button>
+        <button type="button" class="image-source-tab" id="sourceTabPixabay" onclick="switchImageSource('pixabay')">Pixabay</button>
+        <button type="button" class="image-source-tab" id="sourceTabUpload" onclick="switchImageSource('upload')">📁 Do dispositivo</button>
       </div>
-      <div class="pixabay-credit">Fotos via <a href="https://pixabay.com" target="_blank" rel="noopener">Pixabay</a></div>
-      <div class="image-grid" id="imagePickerGrid">
-        <div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>
+
+      <div id="searchSourceUI">
+        <div class="image-search-row">
+          <input type="text" id="imagePickerQuery" placeholder="Ex: praia, montanha, gatos...">
+          <button type="button" id="imagePickerSearchBtn" onclick="runImageSearch()">Buscar</button>
+        </div>
+        <div class="pixabay-credit" id="sourceCredit">Fotos via <a href="https://pexels.com" target="_blank" rel="noopener">Pexels</a></div>
+        <div class="image-grid" id="imagePickerGrid">
+          <div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>
+        </div>
       </div>
+
+      <div id="uploadSourceUI" style="display:none;">
+        <label class="upload-drop-zone" for="imageUploadInput" tabindex="0">
+          <span class="updz-icon">📁</span>
+          Toque para escolher uma foto do seu dispositivo<br>(JPG ou PNG)
+        </label>
+        <input type="file" id="imageUploadInput" accept="image/png, image/jpeg, image/jpg, image/webp" style="display:none;" onchange="handleImageUpload(event)">
+        <div id="uploadStatus" style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:12px; min-height:16px;"></div>
+      </div>
+
       <div class="modal-buttons">
         <button class="modal-btn btn-cancel" onclick="closeImagePicker()">Fechar</button>
       </div>
@@ -1029,9 +1099,11 @@
   const IDLE_TIME_LIMIT = 120000;
   let dragSrcIndex = null;
 
-  // ===== Estado do seletor de imagens (Pixabay) =====
-  const PIXABAY_KEY_KEY = 'tvPixabayApiKey'; // chave da API, salva globalmente (não é por perfil)
+  // ===== Estado do seletor de imagens (Pexels / Pixabay / Upload) =====
+  const PEXELS_KEY_KEY = 'tvPexelsApiKey';   // chave da API do Pexels, salva globalmente (não é por perfil)
+  const PIXABAY_KEY_KEY = 'tvPixabayApiKey'; // chave da API do Pixabay, salva globalmente (não é por perfil)
   let imagePickerMode = null; // 'avatar' | 'wallpaper'
+  let imageSourceActive = 'pexels'; // 'pexels' | 'pixabay' | 'upload'
   let imagePickerSearchToken = 0; // evita que uma busca antiga sobrescreva uma mais recente
 
   // Web Audio API para sons refinados
@@ -1413,27 +1485,31 @@
 
   // ===== Seletor de imagens (Pixabay): papel de parede e ícone de perfil =====
 
+  function getPexelsKey() {
+    return (localStorage.getItem(PEXELS_KEY_KEY) || '').trim();
+  }
   function getPixabayKey() {
     return (localStorage.getItem(PIXABAY_KEY_KEY) || '').trim();
   }
 
   function openImagePicker(mode) {
     imagePickerMode = mode;
-    const grid = document.getElementById('imagePickerGrid');
     const title = document.getElementById('imagePickerTitle');
-    const queryInput = document.getElementById('imagePickerQuery');
-
     title.textContent = mode === 'avatar' ? '👤 Escolher ícone de perfil' : '🖼️ Escolher papel de parede';
-    queryInput.value = '';
-    grid.className = 'image-grid';
-    grid.innerHTML = '<div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>';
 
-    if (!getPixabayKey()) {
-      grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pixabay configurada.<br>Feche esta janela, cole sua chave no campo "Chave da API do Pixabay" nas Configurações e tente de novo.</div>';
-    }
+    document.getElementById('uploadStatus').textContent = '';
+    document.getElementById('imageUploadInput').value = '';
+
+    // Abre já na primeira fonte que tiver chave configurada; se nenhuma tiver, abre em Pexels
+    // mesmo assim (mostrando o aviso de chave faltando) porque é a fonte recomendada.
+    const startSource = getPexelsKey() ? 'pexels' : (getPixabayKey() ? 'pixabay' : 'pexels');
+    switchImageSource(startSource);
 
     document.getElementById('imagePickerModalOverlay').style.display = 'flex';
-    setTimeout(() => queryInput.focus(), 50);
+    setTimeout(() => {
+      const q = document.getElementById('imagePickerQuery');
+      if (q.offsetParent !== null) q.focus();
+    }, 50);
   }
 
   function closeImagePicker() {
@@ -1442,11 +1518,128 @@
     imagePickerMode = null;
   }
 
+  function switchImageSource(source) {
+    playSound('move');
+    imageSourceActive = source;
+
+    document.getElementById('sourceTabPexels').classList.toggle('active', source === 'pexels');
+    document.getElementById('sourceTabPixabay').classList.toggle('active', source === 'pixabay');
+    document.getElementById('sourceTabUpload').classList.toggle('active', source === 'upload');
+
+    const isUpload = source === 'upload';
+    document.getElementById('searchSourceUI').style.display = isUpload ? 'none' : 'block';
+    document.getElementById('uploadSourceUI').style.display = isUpload ? 'block' : 'none';
+
+    if (isUpload) return;
+
+    const credit = document.getElementById('sourceCredit');
+    const grid = document.getElementById('imagePickerGrid');
+    const queryInput = document.getElementById('imagePickerQuery');
+
+    if (source === 'pexels') {
+      credit.innerHTML = 'Fotos via <a href="https://pexels.com" target="_blank" rel="noopener">Pexels</a>';
+      if (!getPexelsKey()) {
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pexels configurada.<br>Feche esta janela, cole sua chave no campo "Chave da API do Pexels" nas Configurações e tente de novo.<br><br>É grátis — veja o link nas Configurações.</div>';
+      } else {
+        grid.innerHTML = '<div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>';
+      }
+    } else {
+      credit.innerHTML = 'Fotos via <a href="https://pixabay.com" target="_blank" rel="noopener">Pixabay</a>';
+      if (!getPixabayKey()) {
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pixabay configurada.<br>Feche esta janela, cole sua chave nas Configurações e tente de novo.</div>';
+      } else {
+        grid.innerHTML = '<div class="image-picker-status">Digite um tema acima e toque em Buscar.</div>';
+      }
+    }
+    if (queryInput.offsetParent !== null) queryInput.focus();
+  }
+
   document.getElementById('imagePickerQuery').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') runImageSearch();
   });
 
   async function runImageSearch() {
+    if (imageSourceActive === 'pexels') return runPexelsSearch();
+    return runPixabaySearch();
+  }
+
+  async function runPexelsSearch() {
+    const key = getPexelsKey();
+    const grid = document.getElementById('imagePickerGrid');
+    const query = document.getElementById('imagePickerQuery').value.trim();
+
+    if (!key) {
+      grid.innerHTML = '<div class="image-picker-status">⚠️ Nenhuma chave da API do Pexels configurada.<br>Feche esta janela, cole sua chave nas Configurações e tente de novo.</div>';
+      return;
+    }
+    if (!query) {
+      grid.innerHTML = '<div class="image-picker-status">Digite um tema para buscar (ex: praia, montanha, gatos...).</div>';
+      return;
+    }
+
+    playSound('click');
+    const myToken = ++imagePickerSearchToken;
+    const searchBtn = document.getElementById('imagePickerSearchBtn');
+    searchBtn.disabled = true;
+    grid.className = 'image-grid';
+    grid.innerHTML = '<div class="image-picker-status">Buscando fotos...</div>';
+
+    // A Pexels não filtra por orientação vertical/horizontal via parâmetro dedicado como o
+    // Pixabay, mas aceita "orientation" com os mesmos valores em inglês.
+    const orientation = imagePickerMode === 'avatar' ? 'portrait' : 'landscape';
+
+    try {
+      const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=20`;
+      const res = await fetch(url, { headers: { 'Authorization': key } });
+
+      if (myToken !== imagePickerSearchToken) return;
+
+      if (res.status === 429) {
+        grid.innerHTML = '<div class="image-picker-status">Muitas buscas em pouco tempo. Espere um pouco e tente de novo.</div>';
+        return;
+      }
+      if (res.status === 401 || res.status === 403) {
+        grid.innerHTML = '<div class="image-picker-status">⚠️ Chave da API do Pexels inválida. Confira a chave nas Configurações.</div>';
+        return;
+      }
+      if (!res.ok) {
+        grid.innerHTML = '<div class="image-picker-status">Não foi possível buscar agora. Tente novamente.</div>';
+        return;
+      }
+
+      const data = await res.json();
+      if (myToken !== imagePickerSearchToken) return;
+
+      if (!data.photos || data.photos.length === 0) {
+        grid.innerHTML = '<div class="image-picker-status">Nenhuma foto encontrada para esse tema. Tente outra palavra.</div>';
+        return;
+      }
+
+      grid.innerHTML = '';
+      data.photos.forEach(photo => {
+        const item = document.createElement('div');
+        item.className = 'image-grid-item' + (imagePickerMode === 'avatar' ? ' avatar-mode' : '');
+        item.tabIndex = 0;
+        item.title = `Foto de ${photo.photographer || 'desconhecido'} — toque para selecionar`;
+        item.innerHTML = `<img src="${photo.src.medium}" alt="${(photo.alt || '').replace(/"/g, '')}" loading="lazy">`;
+        const choose = () => selectPickedImage({
+          source: 'pexels',
+          previewURL: photo.src.medium,
+          downloadURL: imagePickerMode === 'avatar' ? (photo.src.portrait || photo.src.large) : (photo.src.large2x || photo.src.large)
+        });
+        item.onclick = choose;
+        item.onkeydown = (e) => { if (e.key === 'Enter') choose(); };
+        grid.appendChild(item);
+      });
+    } catch (err) {
+      if (myToken !== imagePickerSearchToken) return;
+      grid.innerHTML = '<div class="image-picker-status">Sem conexão com a internet no momento. Tente novamente.</div>';
+    } finally {
+      if (myToken === imagePickerSearchToken) searchBtn.disabled = false;
+    }
+  }
+
+  async function runPixabaySearch() {
     const key = getPixabayKey();
     const grid = document.getElementById('imagePickerGrid');
     const query = document.getElementById('imagePickerQuery').value.trim();
@@ -1503,7 +1696,11 @@
         item.tabIndex = 0;
         item.title = 'Selecionar esta foto';
         item.innerHTML = `<img src="${hit.webformatURL}" alt="${(hit.tags || '').replace(/"/g, '')}" loading="lazy">`;
-        const choose = () => selectPickedImage(hit);
+        const choose = () => selectPickedImage({
+          source: 'pixabay',
+          previewURL: hit.webformatURL,
+          downloadURL: hit.largeImageURL || hit.webformatURL
+        });
         item.onclick = choose;
         item.onkeydown = (e) => { if (e.key === 'Enter') choose(); };
         grid.appendChild(item);
@@ -1516,6 +1713,48 @@
     }
   }
 
+  // ===== Upload de imagem do próprio dispositivo =====
+  // Arquivo local nunca tem problema de CORS (não vem de outro domínio), então esse caminho
+  // sempre consegue comprimir via canvas — é o mais confiável dos três.
+  function handleImageUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    const status = document.getElementById('uploadStatus');
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      status.textContent = 'Esse arquivo não é uma imagem. Escolha um JPG, PNG ou WEBP.';
+      return;
+    }
+    // Limite de segurança generoso; a compressão via canvas reduz bastante de qualquer forma.
+    if (file.size > 20 * 1024 * 1024) {
+      status.textContent = 'Essa imagem é muito grande (máx. 20MB). Tente outra.';
+      return;
+    }
+
+    status.textContent = 'Processando imagem...';
+    playSound('click');
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const isAvatar = imagePickerMode === 'avatar';
+      try {
+        const compressed = await urlToBase64(e.target.result, isAvatar);
+        if (isAvatar) applyAvatar(compressed);
+        else applyWallpaper(compressed);
+        playSound('click');
+        closeImagePicker();
+      } catch (err) {
+        // Arquivo local lido como data: URL nunca deveria cair aqui (sem CORS possível),
+        // mas mantém o aviso por segurança caso o arquivo esteja corrompido/formato inválido.
+        status.textContent = 'Não foi possível processar essa imagem. Tente outro arquivo.';
+      }
+    };
+    reader.onerror = () => {
+      status.textContent = 'Não foi possível ler esse arquivo. Tente outro.';
+    };
+    reader.readAsDataURL(file);
+  }
+
   // Converte a imagem escolhida para base64 e salva no perfil, comprimindo via <canvas>.
   // IMPORTANTE: nem todo CDN libera CORS para leitura de pixels (canvas.toDataURL).
   // Se o Pixabay não liberar isso, tentar ler o canvas lança SecurityError ("tainted canvas").
@@ -1523,11 +1762,11 @@
   // para salvar a URL direta da imagem se a compressão falhar por qualquer motivo — assim a
   // pessoa nunca vê um erro, só muda (silenciosamente) se a foto fica guardada localmente
   // (comprimida) ou como link (carregada da internet toda vez que a TV abre).
-  async function selectPickedImage(hit) {
+  async function selectPickedImage(pickedImage) {
     const grid = document.getElementById('imagePickerGrid');
     grid.innerHTML = '<div class="image-picker-status">Aplicando imagem escolhida...</div>';
 
-    const sourceUrl = imagePickerMode === 'avatar' ? hit.webformatURL : (hit.largeImageURL || hit.webformatURL);
+    const sourceUrl = pickedImage.downloadURL;
     const isAvatar = imagePickerMode === 'avatar';
 
     let finalValue;
@@ -1841,6 +2080,7 @@
     const profile = getActiveProfile();
     document.getElementById('userNameInput').value = profile.name;
     document.getElementById('themeSelect').value = profile.theme;
+    document.getElementById('pexelsKeyInput').value = getPexelsKey();
     document.getElementById('pixabayKeyInput').value = getPixabayKey();
     document.getElementById('profilePinInput').value = profile.pin || '';
     document.getElementById('soundToggle').checked = localStorage.getItem('tvSoundEnabled') !== 'false';
@@ -1871,6 +2111,9 @@
     profile.theme = document.getElementById('themeSelect').value;
     profile.pin = pinVal;
     saveProfilesData(profilesData);
+
+    const pexelsKeyVal = document.getElementById('pexelsKeyInput').value.trim();
+    localStorage.setItem(PEXELS_KEY_KEY, pexelsKeyVal);
 
     const pixabayKeyVal = document.getElementById('pixabayKeyInput').value.trim();
     localStorage.setItem(PIXABAY_KEY_KEY, pixabayKeyVal);
